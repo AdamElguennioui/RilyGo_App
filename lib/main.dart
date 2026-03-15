@@ -5,30 +5,48 @@ import 'ui/create_mission_screen.dart';
 import 'ui/mission_status_screen.dart';
 import 'ui/agent_mission_list.dart';
 import 'ui/agent_mission_detail.dart';
+import 'ui/client_home_screen.dart';
+import 'ui/agent_home_screen.dart';
 
 void main() {
-  runApp(RilyApp());
+  runApp(const RilyApp());
 }
 
 class RilyApp extends StatelessWidget {
+  const RilyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rily App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => LoginScreen(),
-        '/createMission': (context) => CreateMissionScreen(),
-        '/agentMissions': (context) => AgentMissionList(),
-        '/missionStatus': (context) {
-          final mission = ModalRoute.of(context)!.settings.arguments as Mission;
-          return MissionStatusScreen(mission: mission);
-        },
-        '/missionDetail': (context) {
-          final mission = ModalRoute.of(context)!.settings.arguments as Mission;
-          return AgentMissionDetail(mission: mission);
-        },
+        '/login': (context) => const LoginScreen(),
+        '/clientHome': (context) => const ClientHomeScreen(),
+        '/agentHome': (context) => const AgentHomeScreen(),
+        '/createMission': (context) => const CreateMissionScreen(),
+        '/agentMissions': (context) => const AgentMissionList(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/missionStatus') {
+          final mission = settings.arguments as Mission;
+          return MaterialPageRoute(
+            builder: (context) => MissionStatusScreen(mission: mission),
+          );
+        }
+
+        if (settings.name == '/missionDetail') {
+          final mission = settings.arguments as Mission;
+          return MaterialPageRoute(
+            builder: (context) => AgentMissionDetail(mission: mission),
+          );
+        }
+
+        return null;
       },
     );
   }
