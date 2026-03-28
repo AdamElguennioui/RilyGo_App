@@ -6,6 +6,7 @@ enum MissionStatus {
   onTheWay,
   inProgress,
   completed,
+  cancelled,
 }
 
 class Mission {
@@ -18,6 +19,9 @@ class Mission {
   final String clientId;
   final String? agentId;
   final Proof? proof;
+  final double basePrice;
+  final bool isExpress;
+  final double totalPrice;
 
   const Mission({
     required this.id,
@@ -26,6 +30,9 @@ class Mission {
     required this.timeSlot,
     required this.note,
     required this.status,
+    required this.basePrice,
+    required this.isExpress,
+    required this.totalPrice,
     required this.clientId,
     this.agentId,
     this.proof,
@@ -41,6 +48,9 @@ class Mission {
       status: _statusFromString(json['status'] as String),
       clientId: json['clientId'] as String,
       agentId: json['agentId'] as String?,
+      basePrice: (json['basePrice'] as num).toDouble(),
+isExpress: json['isExpress'] as bool,
+totalPrice: (json['totalPrice'] as num).toDouble(),
       proof: json['proof'] != null
           ? Proof.fromJson(json['proof'] as Map<String, dynamic>)
           : null,
@@ -57,6 +67,9 @@ class Mission {
       'status': status.name,
       'clientId': clientId,
       'agentId': agentId,
+      'basePrice': basePrice,
+'isExpress': isExpress,
+'totalPrice': totalPrice,
       'proof': proof?.toJson(),
     };
   }
@@ -70,6 +83,9 @@ class Mission {
     MissionStatus? status,
     String? clientId,
     String? agentId,
+    double? basePrice,
+bool? isExpress,
+double? totalPrice,
     Proof? proof,
   }) {
     return Mission(
@@ -81,23 +97,29 @@ class Mission {
       status: status ?? this.status,
       clientId: clientId ?? this.clientId,
       agentId: agentId ?? this.agentId,
+      basePrice: basePrice ?? this.basePrice,
+isExpress: isExpress ?? this.isExpress,
+totalPrice: totalPrice ?? this.totalPrice,
       proof: proof ?? this.proof,
     );
   }
 
   static MissionStatus _statusFromString(String value) {
-    switch (value) {
-      case 'accepted':
-        return MissionStatus.accepted;
-      case 'onTheWay':
-        return MissionStatus.onTheWay;
-      case 'inProgress':
-        return MissionStatus.inProgress;
-      case 'completed':
-        return MissionStatus.completed;
-      case 'created':
-      default:
-        return MissionStatus.created;
-    }
+  switch (value) {
+    case 'accepted':
+      return MissionStatus.accepted;
+    case 'onTheWay':
+      return MissionStatus.onTheWay;
+    case 'inProgress':
+      return MissionStatus.inProgress;
+    case 'completed':
+      return MissionStatus.completed;
+    case 'cancelled':
+      return MissionStatus.cancelled;
+    case 'created':
+    default:
+      return MissionStatus.created;
   }
+}
+  
 }

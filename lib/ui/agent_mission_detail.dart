@@ -28,16 +28,26 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
     );
   }
 
-  void _updateStatus(MissionStatus status, String message) {
-    missionService.updateMissionStatus(currentMission.id, status);
-    setState(() {});
+  Future<void> _updateStatus(MissionStatus status, String message) async {
+    try {
+      await missionService.updateMissionStatus(currentMission.id, status);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
-  void _addProof() {
+  Future<void> _addProof() async {
     final comment = proofCommentController.text.trim();
 
     if (comment.isEmpty) {
@@ -49,19 +59,75 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
       return;
     }
 
-    missionService.addProof(
-      missionId: currentMission.id,
-      imagePath: 'assets/proof_placeholder.jpg',
-      comment: comment,
+    try {
+      await missionService.addProof(
+        missionId: currentMission.id,
+        imagePath: 'assets/proof_placeholder.jpg',
+        comment: comment,
+      );
+
+      proofCommentController.clear();
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preuve ajoutée avec succès.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _cancelMission() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Annuler la mission'),
+          content: const Text(
+            'Voulez-vous vraiment annuler cette mission ?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Non'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Oui, annuler'),
+            ),
+          ],
+        );
+      },
     );
 
-    setState(() {});
+    if (confirmed != true) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Preuve ajoutée avec succès.'),
-      ),
-    );
+    try {
+      await missionService.cancelMission(currentMission.id);
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mission annulée avec succès.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   String _statusLabel(MissionStatus status) {
@@ -76,12 +142,42 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
         return 'En cours';
       case MissionStatus.completed:
         return 'Terminée';
+      case MissionStatus.cancelled:
+        return 'Annulée';
     }
+  }
+
+  Color _statusColor(MissionStatus status) {
+    switch (status) {
+      case MissionStatus.created:
+        return Colors.grey;
+      case MissionStatus.accepted:
+        return Colors.blue;
+      case MissionStatus.onTheWay:
+        return Colors.orange;
+      case MissionStatus.inProgress:
+        return Colors.deepPurple;
+      case MissionStatus.completed:
+        return Colors.green;
+      case MissionStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  bool _canAddProof(Mission mission) {
+    return mission.status == MissionStatus.inProgress ||
+        mission.status == MissionStatus.completed;
+  }
+
+  bool _canCancelMission(Mission mission) {
+    return mission.status != MissionStatus.completed &&
+        mission.status != MissionStatus.cancelled;
   }
 
   @override
   Widget build(BuildContext context) {
     final mission = currentMission;
+    final statusColor = _statusColor(mission.status);
 
     return Scaffold(
       appBar: AppBar(
@@ -92,19 +188,97 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Catégorie: ${mission.category}'),
-            const SizedBox(height: 8),
-            Text('Adresse: ${mission.address}'),
-            const SizedBox(height: 8),
-            Text('Créneau: ${mission.timeSlot}'),
-            const SizedBox(height: 8),
-            Text('Note: ${mission.note}'),
-            const SizedBox(height: 8),
-            Text('Statut: ${_statusLabel(mission.status)}'),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            mission.category,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (mission.isExpress)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Express',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text('📍 Adresse: ${mission.address}'),
+                    const SizedBox(height: 8),
+                    Text('🕒 Créneau: ${mission.timeSlot}'),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Text('📌 Statut: '),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _statusLabel(mission.status),
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '💰 Prix de base: ${mission.basePrice.toStringAsFixed(2)} MAD',
+                    ),
+                    const SizedBox(height: 8),
+                    Text('⚡ Express: ${mission.isExpress ? "Oui" : "Non"}'),
+                    const SizedBox(height: 8),
+                    Text(
+                      '💵 Prix total: ${mission.totalPrice.toStringAsFixed(2)} MAD',
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '📝 Note: ${mission.note.isEmpty ? "Aucune note" : mission.note}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             const Text(
-              'Actions mission',
+              'Progression mission',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -167,6 +341,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
             TextField(
               controller: proofCommentController,
               maxLines: 3,
+              enabled: _canAddProof(mission),
               decoration: const InputDecoration(
                 labelText: 'Commentaire preuve',
                 border: OutlineInputBorder(),
@@ -177,7 +352,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _addProof,
+                onPressed: _canAddProof(mission) ? _addProof : null,
                 child: const Text('Uploader preuve'),
               ),
             ),
@@ -193,10 +368,67 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text('Image: ${mission.proof!.imagePath ?? 'Aucune image'}'),
-              const SizedBox(height: 8),
-              Text('Commentaire: ${mission.proof!.comment ?? 'Aucun commentaire'}'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Image: ${mission.proof!.imagePath}'),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Commentaire: ${mission.proof!.comment ?? 'Aucun commentaire'}',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _canCancelMission(mission) ? _cancelMission : null,
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Annuler mission'),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            if (mission.status == MissionStatus.completed)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.green.withOpacity(0.25),
+                  ),
+                ),
+                child: const Text(
+                  'Mission terminée. Étape suivante : brancher le rating côté client.',
+                ),
+              ),
+
+            if (mission.status == MissionStatus.cancelled)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.red.withOpacity(0.25),
+                  ),
+                ),
+                child: const Text(
+                  'Cette mission est annulée. Aucune autre action n’est disponible.',
+                ),
+              ),
           ],
         ),
       ),

@@ -41,24 +41,24 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-  title: const Text('Accueil Client'),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.logout),
-      onPressed: () async {
-        await authService.logout();
+        title: const Text('Accueil Client'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await authService.logout();
 
-        if (!context.mounted) return;
+              if (!context.mounted) return;
 
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (route) => false,
-        );
-      },
-    ),
-  ],
-),
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (route) => false,
+              );
+            },
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           setState(() {});
@@ -96,9 +96,23 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               ...clientMissions.map(
                 (mission) => Card(
                   child: ListTile(
-                    title: Text(mission.category),
+                    title: Row(
+                      children: [
+                        Expanded(child: Text(mission.category)),
+                        if (mission.isExpress)
+                          const Text(
+                            '⚡ Express',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                      ],
+                    ),
                     subtitle: Text(
-                      '${mission.address}\nStatut: ${_statusLabel(mission.status)}',
+                      '${mission.address}\n'
+                      'Statut: ${_statusLabel(mission.status)}\n'
+                      'Prix: ${mission.totalPrice.toStringAsFixed(0)} MAD',
                     ),
                     isThreeLine: true,
                     trailing: const Icon(Icons.chevron_right),
@@ -132,6 +146,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         return 'En cours';
       case MissionStatus.completed:
         return 'Terminée';
+       case MissionStatus.cancelled:
+        return 'Annulée';
     }
   }
 }

@@ -54,11 +54,12 @@ class _AgentMissionListState extends State<AgentMissionList> {
             const Text(
               'Missions disponibles',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
+
             if (availableMissions.isEmpty)
               const Card(
                 child: Padding(
@@ -68,35 +69,9 @@ class _AgentMissionListState extends State<AgentMissionList> {
               )
             else
               ...availableMissions.map(
-                (mission) => Card(
-                  child: ListTile(
-                    title: Text(mission.category),
-                    subtitle: Text(
-                      '${mission.address}\nCréneau: ${mission.timeSlot}',
-                    ),
-                    isThreeLine: true,
-                    trailing: ElevatedButton(
-                      onPressed: () {
-                        missionService.acceptMission(mission.id);
-                        setState(() {});
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Mission acceptée.'),
-                          ),
-                        );
-                      },
-                      child: const Text('Accepter'),
-                    ),
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/missionDetail',
-                        arguments: mission,
-                      ).then((_) {
-                        setState(() {});
-                      });
-                    },
-                  ),
+                (mission) => _buildMissionCard(
+                  mission: mission,
+                  isAvailable: true,
                 ),
               ),
 
@@ -105,11 +80,12 @@ class _AgentMissionListState extends State<AgentMissionList> {
             const Text(
               'Mes missions assignées',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
+
             if (assignedMissions.isEmpty)
               const Card(
                 child: Padding(
@@ -119,27 +95,128 @@ class _AgentMissionListState extends State<AgentMissionList> {
               )
             else
               ...assignedMissions.map(
-                (mission) => Card(
-                  child: ListTile(
-                    title: Text(mission.category),
-                    subtitle: Text(
-                      '${mission.address}\nStatut: ${_statusLabel(mission.status)}',
-                    ),
-                    isThreeLine: true,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/missionDetail',
-                        arguments: mission,
-                      ).then((_) {
-                        setState(() {});
-                      });
-                    },
-                  ),
+                (mission) => _buildMissionCard(
+                  mission: mission,
+                  isAvailable: false,
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMissionCard({
+    required Mission mission,
+    required bool isAvailable,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/missionDetail',
+            arguments: mission,
+          ).then((_) {
+            setState(() {});
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      mission.category,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (_isExpress(mission))
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Express',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text('📍 ${mission.address}'),
+              const SizedBox(height: 6),
+              Text('🕒 ${mission.timeSlot}'),
+              const SizedBox(height: 6),
+              Text('📌 Statut: ${_statusLabel(mission.status)}'),
+              const SizedBox(height: 6),
+              Text('💰 Prix: ${_missionPrice(mission)} MAD'),
+              if (mission.note.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '📝 ${mission.note}',
+                  style: const TextStyle(color: Colors.black87),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/missionDetail',
+                          arguments: mission,
+                        ).then((_) {
+                          setState(() {});
+                        });
+                      },
+                      child: const Text('Voir détail'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  if (isAvailable)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          missionService.acceptMission(mission.id);
+                          setState(() {});
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Mission acceptée.'),
+                            ),
+                          );
+                        },
+                        child: const Text('Accepter'),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -157,6 +234,25 @@ class _AgentMissionListState extends State<AgentMissionList> {
         return 'En cours';
       case MissionStatus.completed:
         return 'Terminée';
+       case MissionStatus.cancelled:
+        return 'Annulée';
+    }
+  }
+
+  bool _isExpress(Mission mission) {
+    try {
+      return (mission as dynamic).isExpress == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _missionPrice(Mission mission) {
+    try {
+      final price = (mission as dynamic).price;
+      return price.toString();
+    } catch (_) {
+      return '--';
     }
   }
 }
