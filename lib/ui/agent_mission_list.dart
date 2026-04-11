@@ -12,51 +12,44 @@ class AgentMissionList extends StatefulWidget {
 }
 
 class _AgentMissionListState extends State<AgentMissionList> {
-  final MissionService missionService = MissionService();
-  final AuthService authService = AuthService();
+  final MissionService _missionService = MissionService();
+  final AuthService _authService = AuthService();
+
+  // Garde l'id de la mission en cours d'acceptation (pour désactiver son bouton)
+  String? _acceptingMissionId;
 
   @override
   Widget build(BuildContext context) {
-    final user = authService.currentUser;
+    final user = _authService.currentUser;
 
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Missions Agent')),
-        body: const Center(
-          child: Text('Aucun utilisateur connecté.'),
-        ),
+        body: const Center(child: Text('Aucun utilisateur connecté.')),
       );
     }
 
     if (user.role != UserRole.agent) {
       return Scaffold(
         appBar: AppBar(title: const Text('Missions Agent')),
-        body: const Center(
-          child: Text('Accès réservé aux agents.'),
-        ),
+        body: const Center(child: Text('Accès réservé aux agents.')),
       );
     }
 
-    final availableMissions = missionService.getAvailableMissions();
-    final assignedMissions = missionService.getAgentMissions(user.id);
+    final availableMissions = _missionService.getAvailableMissions();
+    final assignedMissions = _missionService.getAgentMissions(user.id);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Missions Agent'),
-      ),
+      appBar: AppBar(title: const Text('Missions Agent')),
       body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {});
-        },
+        onRefresh: () async => setState(() {}),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // ── Disponibles ──
             const Text(
               'Missions disponibles',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
@@ -69,20 +62,21 @@ class _AgentMissionListState extends State<AgentMissionList> {
               )
             else
               ...availableMissions.map(
-                (mission) => _buildMissionCard(
-                  mission: mission,
-                  isAvailable: true,
+                (m) => _MissionCard(
+                  mission: m,
+                  showAcceptButton: true,
+                  isAccepting: _acceptingMissionId == m.id,
+                  onAccept: () => _acceptMission(m.id),
+                  onDetail: () => _goToDetail(m),
                 ),
               ),
 
             const SizedBox(height: 24),
 
+            // ── Assignées ──
             const Text(
               'Mes missions assignées',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
@@ -95,9 +89,12 @@ class _AgentMissionListState extends State<AgentMissionList> {
               )
             else
               ...assignedMissions.map(
-                (mission) => _buildMissionCard(
-                  mission: mission,
-                  isAvailable: false,
+                (m) => _MissionCard(
+                  mission: m,
+                  showAcceptButton: false,
+                  isAccepting: false,
+                  onAccept: () {},
+                  onDetail: () => _goToDetail(m),
                 ),
               ),
           ],
@@ -106,124 +103,63 @@ class _AgentMissionListState extends State<AgentMissionList> {
     );
   }
 
-  Widget _buildMissionCard({
-    required Mission mission,
-    required bool isAvailable,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/missionDetail',
-            arguments: mission,
-          ).then((_) {
-            setState(() {});
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      mission.category,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  if (_isExpress(mission))
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'Express',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text('📍 ${mission.address}'),
-              const SizedBox(height: 6),
-              Text('🕒 ${mission.timeSlot}'),
-              const SizedBox(height: 6),
-              Text('📌 Statut: ${_statusLabel(mission.status)}'),
-              const SizedBox(height: 6),
-              Text('💰 Prix: ${_missionPrice(mission)} MAD'),
-              if (mission.note.trim().isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '📝 ${mission.note}',
-                  style: const TextStyle(color: Colors.black87),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/missionDetail',
-                          arguments: mission,
-                        ).then((_) {
-                          setState(() {});
-                        });
-                      },
-                      child: const Text('Voir détail'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  if (isAvailable)
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          missionService.acceptMission(mission.id);
-                          setState(() {});
+  Future<void> _acceptMission(String missionId) async {
+    if (_acceptingMissionId != null) return; // déjà une acceptation en cours
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Mission acceptée.'),
-                            ),
-                          );
-                        },
-                        child: const Text('Accepter'),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
+    setState(() => _acceptingMissionId = missionId);
+
+    try {
+      await _missionService.acceptMission(missionId);
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mission acceptée !'),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _acceptingMissionId = null);
+    }
   }
 
-  String _statusLabel(MissionStatus status) {
-    switch (status) {
+  void _goToDetail(Mission mission) {
+    Navigator.pushNamed(
+      context,
+      '/missionDetail',
+      arguments: mission,
+    ).then((_) => setState(() {}));
+  }
+}
+
+// ─── Card mission réutilisable ───────────────────────────────────────────────
+
+class _MissionCard extends StatelessWidget {
+  final Mission mission;
+  final bool showAcceptButton;
+  final bool isAccepting;
+  final VoidCallback onAccept;
+  final VoidCallback onDetail;
+
+  const _MissionCard({
+    required this.mission,
+    required this.showAcceptButton,
+    required this.isAccepting,
+    required this.onAccept,
+    required this.onDetail,
+  });
+
+  String _statusLabel(MissionStatus s) {
+    switch (s) {
       case MissionStatus.created:
         return 'Créée';
       case MissionStatus.accepted:
@@ -234,25 +170,138 @@ class _AgentMissionListState extends State<AgentMissionList> {
         return 'En cours';
       case MissionStatus.completed:
         return 'Terminée';
-       case MissionStatus.cancelled:
+      case MissionStatus.cancelled:
         return 'Annulée';
     }
   }
 
-  bool _isExpress(Mission mission) {
-    try {
-      return (mission as dynamic).isExpress == true;
-    } catch (_) {
-      return false;
+  Color _statusColor(MissionStatus s) {
+    switch (s) {
+      case MissionStatus.created:
+        return Colors.grey;
+      case MissionStatus.accepted:
+        return Colors.blue;
+      case MissionStatus.onTheWay:
+        return Colors.orange;
+      case MissionStatus.inProgress:
+        return Colors.deepPurple;
+      case MissionStatus.completed:
+        return Colors.green;
+      case MissionStatus.cancelled:
+        return Colors.red;
     }
   }
 
-  String _missionPrice(Mission mission) {
-    try {
-      final price = (mission as dynamic).price;
-      return price.toString();
-    } catch (_) {
-      return '--';
-    }
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(mission.status);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onDetail,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Catégorie + badge express
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      mission.category,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (mission.isExpress)
+                    _badge('⚡ Express', Colors.orange),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              Text('📍 ${mission.address}'),
+              const SizedBox(height: 4),
+              Text('🕒 ${mission.timeSlot}'),
+              const SizedBox(height: 4),
+
+              Row(
+                children: [
+                  const Text('📌 '),
+                  _badge(_statusLabel(mission.status), statusColor),
+                ],
+              ),
+              const SizedBox(height: 4),
+
+              // FIX : on utilise directement totalPrice (le bug "double cast" est corrigé)
+              Text(
+                  '💰 ${mission.totalPrice.toStringAsFixed(0)} MAD'),
+
+              if (mission.note.trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '📝 ${mission.note}',
+                  style: const TextStyle(color: Colors.black87),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+
+              const SizedBox(height: 14),
+
+              // Boutons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onDetail,
+                      child: const Text('Voir détail'),
+                    ),
+                  ),
+                  if (showAcceptButton) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isAccepting ? null : onAccept,
+                        child: isAccepting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white),
+                              )
+                            : const Text('Accepter'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            color: color, fontWeight: FontWeight.w600, fontSize: 12),
+      ),
+    );
   }
 }

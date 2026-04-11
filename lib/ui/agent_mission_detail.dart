@@ -12,126 +12,178 @@ class AgentMissionDetail extends StatefulWidget {
 }
 
 class _AgentMissionDetailState extends State<AgentMissionDetail> {
-  final MissionService missionService = MissionService();
-  final TextEditingController proofCommentController = TextEditingController();
+  final MissionService _missionService = MissionService();
+  final TextEditingController _proofCommentController =
+      TextEditingController();
+
+  // États async — un seul à la fois actif pour éviter doubles appuis
+  bool _isUpdatingStatus = false;
+  bool _isUploadingProof = false;
+  bool _isCancelling = false;
+
+  // État preuve
+  bool _proofUploadFailed = false;
 
   @override
   void dispose() {
-    proofCommentController.dispose();
+    _proofCommentController.dispose();
     super.dispose();
   }
 
-  Mission get currentMission {
-    return missionService.missions.firstWhere(
+  Mission get _mission {
+    return _missionService.missions.firstWhere(
       (m) => m.id == widget.mission.id,
       orElse: () => widget.mission,
     );
   }
 
-  Future<void> _updateStatus(MissionStatus status, String message) async {
-    try {
-      await missionService.updateMissionStatus(currentMission.id, status);
+  bool get _anyLoading =>
+      _isUpdatingStatus || _isUploadingProof || _isCancelling;
 
+  // ─── Progression statut ───────────────────────────────────────────────────
+
+  Future<void> _updateStatus(
+      MissionStatus newStatus, String successMessage) async {
+    if (_anyLoading) return;
+    setState(() => _isUpdatingStatus = true);
+
+    try {
+      await _missionService.updateMissionStatus(_mission.id, newStatus);
       if (!mounted) return;
       setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showSuccess(successMessage);
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      _showError(e);
+    } finally {
+      if (mounted) setState(() => _isUpdatingStatus = false);
     }
   }
 
-  Future<void> _addProof() async {
-    final comment = proofCommentController.text.trim();
+  // ─── Upload preuve (mock — prêt pour vrai backend) ────────────────────────
+  //
+  //  Structure :  1. simulation compression (TODO: image_picker + flutter_image_compress)
+  //               2. simulation upload HTTP (TODO: multipart/form-data)
+  //               3. appel addProof avec l'URL retournée
+  //
+  //  Pour switcher vers un vrai backend :
+  //  - remplacer _simulateUpload() par un appel HTTP réel
+  //  - passer l'URL retournée à addProof(imagePath: url)
+
+  Future<void> _uploadProof() async {
+    final comment = _proofCommentController.text.trim();
 
     if (comment.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Merci de saisir un commentaire de preuve.'),
-        ),
-      );
+      _showError('Merci de saisir un commentaire de preuve.');
       return;
     }
 
+    if (_anyLoading) return;
+
+    setState(() {
+      _isUploadingProof = true;
+      _proofUploadFailed = false;
+    });
+
     try {
-      await missionService.addProof(
-        missionId: currentMission.id,
-        imagePath: 'assets/proof_placeholder.jpg',
+      // TODO: remplacer par image_picker + sélection réelle
+      final String imagePath = await _simulateImageUpload();
+
+      await _missionService.addProof(
+        missionId: _mission.id,
+        imagePath: imagePath,
         comment: comment,
       );
 
-      proofCommentController.clear();
-
+      _proofCommentController.clear();
       if (!mounted) return;
       setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preuve ajoutée avec succès.'),
-        ),
-      );
+      _showSuccess('Preuve ajoutée avec succès.');
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      setState(() => _proofUploadFailed = true);
+      _showError(e);
+    } finally {
+      if (mounted) setState(() => _isUploadingProof = false);
     }
   }
+
+  /// Simule un upload avec délai. Remplacer par HTTP réel plus tard.
+  Future<String> _simulateImageUpload() async {
+    await Future.delayed(const Duration(seconds: 1));
+    // Simule une URL retournée par le backend
+    return 'assets/proof_placeholder.jpg';
+  }
+
+  // ─── Annulation ───────────────────────────────────────────────────────────
 
   Future<void> _cancelMission() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Annuler la mission'),
-          content: const Text(
-            'Voulez-vous vraiment annuler cette mission ?',
+      builder: (ctx) => AlertDialog(
+        title: const Text('Annuler la mission'),
+        content: const Text(
+          'Voulez-vous vraiment annuler cette mission ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Non'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non'),
+          ElevatedButton(
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Oui, annuler',
+              style: TextStyle(color: Colors.white),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Oui, annuler'),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
 
     if (confirmed != true) return;
+    if (_anyLoading) return;
+
+    setState(() => _isCancelling = true);
 
     try {
-      await missionService.cancelMission(currentMission.id);
-
+      await _missionService.cancelMission(_mission.id);
       if (!mounted) return;
       setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mission annulée avec succès.'),
-        ),
-      );
+      _showSuccess('Mission annulée.');
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      _showError(e);
+    } finally {
+      if (mounted) setState(() => _isCancelling = false);
     }
   }
 
-  String _statusLabel(MissionStatus status) {
-    switch (status) {
+  // ─── Snackbars ────────────────────────────────────────────────────────────
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green.shade700,
+      ),
+    );
+  }
+
+  void _showError(Object e) {
+    final msg =
+        e is Exception ? e.toString().replaceFirst('Exception: ', '') : '$e';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
+    );
+  }
+
+  // ─── Labels / couleurs ────────────────────────────────────────────────────
+
+  String _statusLabel(MissionStatus s) {
+    switch (s) {
       case MissionStatus.created:
         return 'Créée';
       case MissionStatus.accepted:
@@ -147,8 +199,8 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
     }
   }
 
-  Color _statusColor(MissionStatus status) {
-    switch (status) {
+  Color _statusColor(MissionStatus s) {
+    switch (s) {
       case MissionStatus.created:
         return Colors.grey;
       case MissionStatus.accepted:
@@ -164,34 +216,28 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
     }
   }
 
-  bool _canAddProof(Mission mission) {
-    return mission.status == MissionStatus.inProgress ||
-        mission.status == MissionStatus.completed;
-  }
-
-  bool _canCancelMission(Mission mission) {
-    return mission.status != MissionStatus.completed &&
-        mission.status != MissionStatus.cancelled;
-  }
+  // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final mission = currentMission;
+    final mission = _mission;
     final statusColor = _statusColor(mission.status);
+    final isCancelled = mission.status == MissionStatus.cancelled;
+    final isCompleted = mission.status == MissionStatus.completed;
+    final canCancel = _missionService.canCancel(mission);
+    final canAddProof = mission.status == MissionStatus.inProgress;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Détail mission'),
-      ),
+      appBar: AppBar(title: const Text('Détail mission')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Infos ──
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+                  borderRadius: BorderRadius.circular(14)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -204,72 +250,34 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                           child: Text(
                             mission.category,
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
-                        if (mission.isExpress)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'Express',
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                        if (mission.isExpress) _badge('⚡ Express', Colors.orange),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Text('📍 Adresse: ${mission.address}'),
-                    const SizedBox(height: 8),
-                    Text('🕒 Créneau: ${mission.timeSlot}'),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                    Text('📍 ${mission.address}'),
+                    const SizedBox(height: 6),
+                    Text('🕒 ${mission.timeSlot}'),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
-                        const Text('📌 Statut: '),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _statusLabel(mission.status),
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        const Text('📌 Statut : '),
+                        _badge(_statusLabel(mission.status), statusColor),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '💰 Prix de base: ${mission.basePrice.toStringAsFixed(2)} MAD',
-                    ),
-                    const SizedBox(height: 8),
-                    Text('⚡ Express: ${mission.isExpress ? "Oui" : "Non"}'),
-                    const SizedBox(height: 8),
+                        '💰 Base : ${mission.basePrice.toStringAsFixed(0)} MAD'),
+                    const SizedBox(height: 4),
                     Text(
-                      '💵 Prix total: ${mission.totalPrice.toStringAsFixed(2)} MAD',
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '📝 Note: ${mission.note.isEmpty ? "Aucune note" : mission.note}',
-                    ),
+                        '💵 Total : ${mission.totalPrice.toStringAsFixed(0)} MAD'),
+                    if (mission.note.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text('📝 ${mission.note}'),
+                    ],
                   ],
                 ),
               ),
@@ -277,161 +285,350 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
 
             const SizedBox(height: 24),
 
-            const Text(
-              'Progression mission',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            // ── Mission annulée ──
+            if (isCancelled) ...[
+              _alertBox(
+                color: Colors.red,
+                icon: Icons.cancel_outlined,
+                message:
+                    'Cette mission est annulée. Aucune action disponible.',
               ),
-            ),
-            const SizedBox(height: 12),
+            ],
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: mission.status == MissionStatus.accepted
-                    ? () => _updateStatus(
-                          MissionStatus.onTheWay,
-                          'Mission mise en route.',
-                        )
+            // ── Mission terminée ──
+            if (isCompleted) ...[
+              _alertBox(
+                color: Colors.green,
+                icon: Icons.check_circle_outline,
+                message: 'Mission terminée avec succès.',
+              ),
+            ],
+
+            // ── Progression (masquée si cancelled ou completed) ──
+            if (!isCancelled && !isCompleted) ...[
+              _sectionTitle('Progression'),
+              const SizedBox(height: 10),
+
+              // Bouton : En route
+              _actionButton(
+                label: '🚀 Mettre en route',
+                loadingLabel: 'Mise en route...',
+                isLoading: _isUpdatingStatus,
+                isEnabled: mission.status == MissionStatus.accepted,
+                onPressed: () => _updateStatus(
+                  MissionStatus.onTheWay,
+                  'Vous êtes en route.',
+                ),
+                hint: mission.status == MissionStatus.onTheWay ||
+                        mission.status == MissionStatus.inProgress
+                    ? null // déjà passé
                     : null,
-                child: const Text('Mettre en route'),
               ),
-            ),
-            const SizedBox(height: 12),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: mission.status == MissionStatus.onTheWay
-                    ? () => _updateStatus(
-                          MissionStatus.inProgress,
-                          'Mission en cours.',
-                        )
-                    : null,
-                child: const Text('Commencer mission'),
-              ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: mission.status == MissionStatus.inProgress
-                    ? () => _updateStatus(
-                          MissionStatus.completed,
-                          'Mission terminée.',
-                        )
-                    : null,
-                child: const Text('Terminer mission'),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            const Text(
-              'Ajouter une preuve',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: proofCommentController,
-              maxLines: 3,
-              enabled: _canAddProof(mission),
-              decoration: const InputDecoration(
-                labelText: 'Commentaire preuve',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _canAddProof(mission) ? _addProof : null,
-                child: const Text('Uploader preuve'),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            if (mission.proof != null) ...[
-              const Text(
-                'Preuve actuelle',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // Bouton : Démarrer
+              _actionButton(
+                label: '▶️ Démarrer la mission',
+                loadingLabel: 'Démarrage...',
+                isLoading: _isUpdatingStatus,
+                isEnabled: mission.status == MissionStatus.onTheWay,
+                onPressed: () => _updateStatus(
+                  MissionStatus.inProgress,
+                  'Mission démarrée.',
                 ),
               ),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 10),
+
+              // Bouton : Terminer (nécessite preuve)
+              _actionButton(
+                label: '✅ Terminer la mission',
+                loadingLabel: 'Finalisation...',
+                isLoading: _isUpdatingStatus,
+                isEnabled: mission.status == MissionStatus.inProgress &&
+                    mission.proof != null,
+                onPressed: () => _updateStatus(
+                  MissionStatus.completed,
+                  'Mission terminée.',
+                ),
+                hint: mission.status == MissionStatus.inProgress &&
+                        mission.proof == null
+                    ? 'Ajoutez d\'abord une preuve'
+                    : null,
+              ),
+
+              const SizedBox(height: 24),
+            ],
+
+            // ── Preuve (seulement en inProgress) ──
+            if (!isCancelled && !isCompleted) ...[
+              _sectionTitle('Preuve de mission'),
+              const SizedBox(height: 10),
+
+              if (mission.proof == null) ...[
+                TextField(
+                  controller: _proofCommentController,
+                  maxLines: 3,
+                  enabled: canAddProof && !_isUploadingProof,
+                  decoration: InputDecoration(
+                    labelText: 'Commentaire de preuve',
+                    border: const OutlineInputBorder(),
+                    hintText: canAddProof
+                        ? 'Décrivez la livraison...'
+                        : 'Disponible quand la mission est en cours',
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Upload avec état loading + retry
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: canAddProof && !_anyLoading
+                        ? _uploadProof
+                        : null,
+                    icon: _isUploadingProof
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white),
+                          )
+                        : Icon(_proofUploadFailed
+                            ? Icons.refresh
+                            : Icons.upload_outlined),
+                    label: Text(
+                      _isUploadingProof
+                          ? 'Upload en cours...'
+                          : _proofUploadFailed
+                              ? 'Réessayer l\'upload'
+                              : 'Uploader la preuve',
+                    ),
+                  ),
+                ),
+
+                if (_proofUploadFailed)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'L\'upload a échoué. Vérifie ta connexion et réessaie.',
+                      style: TextStyle(
+                          color: Colors.red.shade700, fontSize: 13),
+                    ),
+                  ),
+              ] else ...[
+                // Preuve déjà uploadée
+                Card(
+                  color: Colors.green.shade50,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '✅ Preuve enregistrée',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                            '🖼️ ${mission.proof!.imagePath ?? 'Aucune image'}'),
+                        const SizedBox(height: 4),
+                        Text(
+                            '💬 ${mission.proof!.comment ?? 'Aucun commentaire'}'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+            ],
+
+            // ── Preuve visible en completed ──
+            if (isCompleted && mission.proof != null) ...[
+              _sectionTitle('Preuve de mission'),
+              const SizedBox(height: 10),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Image: ${mission.proof!.imagePath}'),
-                      const SizedBox(height: 8),
                       Text(
-                        'Commentaire: ${mission.proof!.comment ?? 'Aucun commentaire'}',
-                      ),
+                          '🖼️ ${mission.proof!.imagePath ?? 'Aucune image'}'),
+                      const SizedBox(height: 4),
+                      Text(
+                          '💬 ${mission.proof!.comment ?? 'Aucun commentaire'}'),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
 
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _canCancelMission(mission) ? _cancelMission : null,
-                icon: const Icon(Icons.cancel_outlined),
-                label: const Text('Annuler mission'),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            if (mission.status == MissionStatus.completed)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.green.withOpacity(0.25),
+            // ── Rating reçu (visible pour l'agent) ──
+            if (mission.ratingScore != null) ...[
+              _sectionTitle('Évaluation client'),
+              const SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: List.generate(
+                          5,
+                          (i) => Icon(
+                            i < mission.ratingScore!
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                      if (mission.ratingComment != null &&
+                          mission.ratingComment!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text('"${mission.ratingComment}"'),
+                      ],
+                    ],
                   ),
                 ),
-                child: const Text(
-                  'Mission terminée. Étape suivante : brancher le rating côté client.',
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // ── Bouton annulation ──
+            if (canCancel)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                  onPressed: _anyLoading ? null : _cancelMission,
+                  icon: _isCancelling
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.red),
+                        )
+                      : const Icon(Icons.cancel_outlined),
+                  label: Text(
+                      _isCancelling ? 'Annulation...' : 'Annuler la mission'),
                 ),
               ),
 
-            if (mission.status == MissionStatus.cancelled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.red.withOpacity(0.25),
-                  ),
-                ),
-                child: const Text(
-                  'Cette mission est annulée. Aucune autre action n’est disponible.',
-                ),
-              ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+
+  // ─── Widgets helpers ──────────────────────────────────────────────────────
+
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            color: color, fontWeight: FontWeight.w600, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _alertBox(
+      {required Color color,
+      required IconData icon,
+      required String message}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: TextStyle(color: color.withOpacity(0.9))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bouton d'action avec état disabled, loading, et hint optionnel.
+  Widget _actionButton({
+    required String label,
+    required String loadingLabel,
+    required bool isLoading,
+    required bool isEnabled,
+    required VoidCallback onPressed,
+    String? hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: (isEnabled && !isLoading) ? onPressed : null,
+            child: isLoading && isEnabled
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(loadingLabel),
+                    ],
+                  )
+                : Text(label),
+          ),
+        ),
+        if (hint != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(
+              hint,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -19,6 +19,8 @@ class MissionService {
 
   List<Mission> get missions => List.unmodifiable(_missions);
 
+  // ─── Pricing ────────────────────────────────────────────────────────────────
+
   double _getBasePrice(String category) {
     switch (category.trim().toLowerCase()) {
       case 'document':
@@ -30,6 +32,8 @@ class MissionService {
     }
   }
 
+  // ─── Création ───────────────────────────────────────────────────────────────
+
   Future<Mission> createMission({
     required String category,
     required String address,
@@ -39,10 +43,7 @@ class MissionService {
   }) async {
     final user = _authService.currentUser;
 
-    if (user == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
+    if (user == null) throw Exception('Utilisateur non connecté');
     if (user.role != UserRole.client) {
       throw Exception('Seul un client peut créer une mission');
     }
@@ -71,6 +72,8 @@ class MissionService {
     return mission;
   }
 
+  // ─── Queries ─────────────────────────────────────────────────────────────────
+
   List<Mission> getClientMissions(String clientId) {
     return _missions.where((m) => m.clientId == clientId).toList();
   }
@@ -93,22 +96,18 @@ class MissionService {
     }
   }
 
+  // ─── Acceptation ─────────────────────────────────────────────────────────────
+
   Future<void> acceptMission(String missionId) async {
     final user = _authService.currentUser;
 
-    if (user == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
+    if (user == null) throw Exception('Utilisateur non connecté');
     if (user.role != UserRole.agent) {
       throw Exception('Seul un agent peut accepter une mission');
     }
 
     final index = _missions.indexWhere((m) => m.id == missionId);
-
-    if (index == -1) {
-      throw Exception('Mission introuvable');
-    }
+    if (index == -1) throw Exception('Mission introuvable');
 
     final mission = _missions[index];
 
@@ -122,40 +121,35 @@ class MissionService {
     );
   }
 
+  // ─── Progression statut (agent uniquement) ───────────────────────────────────
+
   Future<void> updateMissionStatus(
     String missionId,
     MissionStatus newStatus,
   ) async {
     final user = _authService.currentUser;
 
-    if (user == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
+    if (user == null) throw Exception('Utilisateur non connecté');
     if (user.role != UserRole.agent) {
-      throw Exception('Seul un agent peut modifier une mission');
+      throw Exception('Seul un agent peut modifier le statut');
     }
 
     final index = _missions.indexWhere((m) => m.id == missionId);
-
-    if (index == -1) {
-      throw Exception('Mission introuvable');
-    }
+    if (index == -1) throw Exception('Mission introuvable');
 
     final mission = _missions[index];
 
     if (mission.agentId != user.id) {
       throw Exception('Vous ne pouvez modifier que vos propres missions');
     }
-
     if (mission.status == MissionStatus.completed) {
       throw Exception('Mission déjà terminée');
     }
-
     if (mission.status == MissionStatus.cancelled) {
       throw Exception('Mission déjà annulée');
     }
 
+    // Transitions autorisées — ordre strict, pas de saut
     final bool isValidTransition =
         (mission.status == MissionStatus.accepted &&
                 newStatus == MissionStatus.onTheWay) ||
@@ -177,6 +171,82 @@ class MissionService {
     _missions[index] = mission.copyWith(status: newStatus);
   }
 
+  // ─── Annulation — règles métier différenciées par rôle ───────────────────────
+  //
+  //  Client  → peut annuler si : created, accepted
+  //            ne peut PAS si  : onTheWay, inProgress, completed, cancelled
+  //
+  //  Agent   → peut annuler si : accepted seulement
+  //            ne peut PAS si  : onTheWay, inProgress, completed, cancelled
+  //
+  //  Personne ne peut annuler une mission completed ou déjà cancelled.
+
+  Future<void> cancelMission(String missionId) async {
+    final user = _authService.currentUser;
+
+    if (user == null) throw Exception('Utilisateur non connecté');
+
+    final index = _missions.indexWhere((m) => m.id == missionId);
+    if (index == -1) throw Exception('Mission introuvable');
+
+    final mission = _missions[index];
+
+    if (mission.status == MissionStatus.completed) {
+      throw Exception('Impossible d\'annuler une mission terminée');
+    }
+    if (mission.status == MissionStatus.cancelled) {
+      throw Exception('Mission déjà annulée');
+    }
+
+    if (user.role == UserRole.client) {
+      if (mission.clientId != user.id) {
+        throw Exception('Vous ne pouvez pas annuler cette mission');
+      }
+      // Client bloqué dès que l'agent est en route
+      if (mission.status == MissionStatus.onTheWay ||
+          mission.status == MissionStatus.inProgress) {
+        throw Exception(
+          'Annulation impossible : l\'agent est déjà en route ou en cours de mission',
+        );
+      }
+    } else if (user.role == UserRole.agent) {
+      if (mission.agentId != user.id) {
+        throw Exception('Vous ne pouvez pas annuler cette mission');
+      }
+      // Agent ne peut annuler que si accepted — pas après
+      if (mission.status != MissionStatus.accepted) {
+        throw Exception(
+          'Vous ne pouvez annuler qu\'une mission au statut "Acceptée"',
+        );
+      }
+    } else {
+      throw Exception('Rôle non autorisé à annuler une mission');
+    }
+
+    _missions[index] = mission.copyWith(status: MissionStatus.cancelled);
+  }
+
+  /// Indique si l'utilisateur courant peut annuler cette mission (pour UI).
+  bool canCancel(Mission mission) {
+    final user = _authService.currentUser;
+    if (user == null) return false;
+    if (mission.status == MissionStatus.completed ||
+        mission.status == MissionStatus.cancelled) return false;
+
+    if (user.role == UserRole.client) {
+      return mission.clientId == user.id &&
+          (mission.status == MissionStatus.created ||
+              mission.status == MissionStatus.accepted);
+    }
+    if (user.role == UserRole.agent) {
+      return mission.agentId == user.id &&
+          mission.status == MissionStatus.accepted;
+    }
+    return false;
+  }
+
+  // ─── Preuve ──────────────────────────────────────────────────────────────────
+
   Future<void> addProof({
     required String missionId,
     required String imagePath,
@@ -184,91 +254,84 @@ class MissionService {
   }) async {
     final user = _authService.currentUser;
 
-    if (user == null) {
-      throw Exception('Utilisateur non connecté');
-    }
-
+    if (user == null) throw Exception('Utilisateur non connecté');
     if (user.role != UserRole.agent) {
       throw Exception('Seul un agent peut ajouter une preuve');
     }
 
     final index = _missions.indexWhere((m) => m.id == missionId);
-
-    if (index == -1) {
-      throw Exception('Mission introuvable');
-    }
+    if (index == -1) throw Exception('Mission introuvable');
 
     final mission = _missions[index];
 
     if (mission.agentId != user.id) {
       throw Exception('Vous ne pouvez ajouter une preuve que sur vos missions');
     }
-
     if (mission.status == MissionStatus.cancelled) {
-      throw Exception('Impossible d’ajouter une preuve à une mission annulée');
+      throw Exception('Impossible d\'ajouter une preuve à une mission annulée');
     }
-
     if (mission.status != MissionStatus.inProgress &&
         mission.status != MissionStatus.completed) {
       throw Exception(
-        'Vous pouvez ajouter une preuve seulement quand la mission est en cours ou terminée',
+        'Preuve disponible seulement en cours ou terminée',
       );
     }
-
     if (comment.trim().isEmpty) {
       throw Exception('Le commentaire de preuve est obligatoire');
     }
 
-    final proof = Proof(
-      imagePath: imagePath,
-      comment: comment.trim(),
-    );
-
     _missions[index] = mission.copyWith(
-      proof: proof,
+      proof: Proof(imagePath: imagePath, comment: comment.trim()),
     );
   }
 
-  Future<void> cancelMission(String missionId) async {
+  // ─── Rating (client après completed) ─────────────────────────────────────────
+
+  Future<void> rateMission({
+    required String missionId,
+    required int score,
+    String? comment,
+  }) async {
     final user = _authService.currentUser;
 
-    if (user == null) {
-      throw Exception('Utilisateur non connecté');
+    if (user == null) throw Exception('Utilisateur non connecté');
+    if (user.role != UserRole.client) {
+      throw Exception('Seul le client peut noter une mission');
+    }
+
+    if (score < 1 || score > 5) {
+      throw Exception('La note doit être entre 1 et 5');
     }
 
     final index = _missions.indexWhere((m) => m.id == missionId);
-
-    if (index == -1) {
-      throw Exception('Mission introuvable');
-    }
+    if (index == -1) throw Exception('Mission introuvable');
 
     final mission = _missions[index];
 
-    final isClientOwner = mission.clientId == user.id;
-    final isAssignedAgent = mission.agentId == user.id;
-
-    if (!isClientOwner && !isAssignedAgent) {
-      throw Exception('Vous ne pouvez pas annuler cette mission');
+    if (mission.clientId != user.id) {
+      throw Exception('Vous ne pouvez noter que vos propres missions');
     }
-
-    if (mission.status == MissionStatus.completed) {
-      throw Exception('Impossible d’annuler une mission terminée');
+    if (mission.status != MissionStatus.completed) {
+      throw Exception('Vous ne pouvez noter qu\'une mission terminée');
     }
-
-    if (mission.status == MissionStatus.cancelled) {
-      throw Exception('Mission déjà annulée');
+    if (mission.ratingScore != null) {
+      throw Exception('Mission déjà notée');
     }
 
     _missions[index] = mission.copyWith(
-      status: MissionStatus.cancelled,
+      ratingScore: score,
+      ratingComment: comment?.trim(),
     );
   }
 
-  bool canRateMission(String missionId) {
+  /// Indique si le client peut noter cette mission.
+  bool canRate(String missionId) {
     final mission = getMissionById(missionId);
-
     if (mission == null) return false;
-
-    return mission.status == MissionStatus.completed;
+    final user = _authService.currentUser;
+    if (user == null || user.role != UserRole.client) return false;
+    return mission.status == MissionStatus.completed &&
+        mission.ratingScore == null &&
+        mission.clientId == user.id;
   }
 }

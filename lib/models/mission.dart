@@ -23,6 +23,10 @@ class Mission {
   final bool isExpress;
   final double totalPrice;
 
+  // Rating — rempli par le client après completed
+  final int? ratingScore;       // 1 à 5
+  final String? ratingComment;  // optionnel
+
   const Mission({
     required this.id,
     required this.category,
@@ -36,6 +40,8 @@ class Mission {
     required this.clientId,
     this.agentId,
     this.proof,
+    this.ratingScore,
+    this.ratingComment,
   });
 
   factory Mission.fromJson(Map<String, dynamic> json) {
@@ -49,11 +55,13 @@ class Mission {
       clientId: json['clientId'] as String,
       agentId: json['agentId'] as String?,
       basePrice: (json['basePrice'] as num).toDouble(),
-isExpress: json['isExpress'] as bool,
-totalPrice: (json['totalPrice'] as num).toDouble(),
+      isExpress: json['isExpress'] as bool,
+      totalPrice: (json['totalPrice'] as num).toDouble(),
       proof: json['proof'] != null
           ? Proof.fromJson(json['proof'] as Map<String, dynamic>)
           : null,
+      ratingScore: json['ratingScore'] as int?,
+      ratingComment: json['ratingComment'] as String?,
     );
   }
 
@@ -68,9 +76,11 @@ totalPrice: (json['totalPrice'] as num).toDouble(),
       'clientId': clientId,
       'agentId': agentId,
       'basePrice': basePrice,
-'isExpress': isExpress,
-'totalPrice': totalPrice,
+      'isExpress': isExpress,
+      'totalPrice': totalPrice,
       'proof': proof?.toJson(),
+      'ratingScore': ratingScore,
+      'ratingComment': ratingComment,
     };
   }
 
@@ -84,9 +94,11 @@ totalPrice: (json['totalPrice'] as num).toDouble(),
     String? clientId,
     String? agentId,
     double? basePrice,
-bool? isExpress,
-double? totalPrice,
+    bool? isExpress,
+    double? totalPrice,
     Proof? proof,
+    int? ratingScore,
+    String? ratingComment,
   }) {
     return Mission(
       id: id ?? this.id,
@@ -98,28 +110,29 @@ double? totalPrice,
       clientId: clientId ?? this.clientId,
       agentId: agentId ?? this.agentId,
       basePrice: basePrice ?? this.basePrice,
-isExpress: isExpress ?? this.isExpress,
-totalPrice: totalPrice ?? this.totalPrice,
+      isExpress: isExpress ?? this.isExpress,
+      totalPrice: totalPrice ?? this.totalPrice,
       proof: proof ?? this.proof,
+      ratingScore: ratingScore ?? this.ratingScore,
+      ratingComment: ratingComment ?? this.ratingComment,
     );
   }
 
   static MissionStatus _statusFromString(String value) {
-  switch (value) {
-    case 'accepted':
-      return MissionStatus.accepted;
-    case 'onTheWay':
-      return MissionStatus.onTheWay;
-    case 'inProgress':
-      return MissionStatus.inProgress;
-    case 'completed':
-      return MissionStatus.completed;
-    case 'cancelled':
-      return MissionStatus.cancelled;
-    case 'created':
-    default:
-      return MissionStatus.created;
+    switch (value) {
+      case 'accepted':
+        return MissionStatus.accepted;
+      case 'onTheWay':
+        return MissionStatus.onTheWay;
+      case 'inProgress':
+        return MissionStatus.inProgress;
+      case 'completed':
+        return MissionStatus.completed;
+      case 'cancelled':
+        return MissionStatus.cancelled;
+      case 'created':
+      default:
+        return MissionStatus.created;
+    }
   }
-}
-  
 }
