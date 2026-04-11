@@ -3,6 +3,9 @@ import '../models/mission.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/mission_service.dart';
+import '../services/connectivity_service.dart';
+import 'theme/app_theme.dart';
+import 'widgets/rily_widgets.dart';
 
 class AgentMissionList extends StatefulWidget {
   const AgentMissionList({super.key});
@@ -11,296 +14,333 @@ class AgentMissionList extends StatefulWidget {
   State<AgentMissionList> createState() => _AgentMissionListState();
 }
 
-class _AgentMissionListState extends State<AgentMissionList> {
-  final MissionService _missionService = MissionService();
-  final AuthService _authService = AuthService();
+class _AgentMissionListState extends State<AgentMissionList>
+    with SingleTickerProviderStateMixin {
+  final MissionService _ms = MissionService();
+  final AuthService _auth = AuthService();
+  final ConnectivityService _conn = ConnectivityService();
 
-  // Garde l'id de la mission en cours d'acceptation (pour désactiver son bouton)
-  String? _acceptingMissionId;
+  late TabController _tabCtrl;
+  bool _isOffline = false;
+  String? _acceptingId;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    _isOffline = !_conn.isConnected;
+    _conn.onConnectivityChanged.listen((c) {
+      if (mounted) setState(() => _isOffline = !c);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _accept(String missionId) async {
+    if (_acceptingId != null) return;
+    setState(() => _acceptingId = missionId);
+    try {
+      await _ms.acceptMission(missionId);
+      if (!mounted) return;
+      setState(() {});
+      showSuccessSnack(context, 'Mission acceptée !');
+      // Switcher sur l'onglet "Mes missions"
+      _tabCtrl.animateTo(1);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _acceptingId = null);
+    }
+  }
+
+  void _goDetail(Mission m) {
+    Navigator.pushNamed(context, '/missionDetail', arguments: m)
+        .then((_) => setState(() {}));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
+    final user = _auth.currentUser;
 
     if (user == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Missions Agent')),
-        body: const Center(child: Text('Aucun utilisateur connecté.')),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
+      });
+      return const Scaffold(body: SizedBox.shrink());
     }
 
     if (user.role != UserRole.agent) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Missions Agent')),
-        body: const Center(child: Text('Accès réservé aux agents.')),
+      return const Scaffold(
+        body: Center(child: Text('Accès réservé aux agents.')),
       );
     }
 
-    final availableMissions = _missionService.getAvailableMissions();
-    final assignedMissions = _missionService.getAgentMissions(user.id);
+    final available = _ms.getAvailableMissions();
+    final myMissions = _ms.getAgentMissions(user.id);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Missions Agent')),
-      body: RefreshIndicator(
-        onRefresh: () async => setState(() {}),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ── Disponibles ──
-            const Text(
-              'Missions disponibles',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
+      body: Column(
+        children: [
+          ConnectivityBanner(
+            isOffline: _isOffline,
+            onRetry: () => setState(() {}),
+          ),
+          Expanded(
+            child: NestedScrollView(
+              headerSliverBuilder: (context, _) => [
+                SliverAppBar(
+                  floating: true,
+                  backgroundColor: RilyColors.bg,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 18),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: const Text('Missions'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded,
+                          color: RilyColors.textSecondary),
+                      onPressed: () => setState(() {}),
+                    ),
+                  ],
+                  bottom: TabBar(
+                    controller: _tabCtrl,
+                    indicatorColor: RilyColors.accent,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    labelColor: RilyColors.accent,
+                    unselectedLabelColor: RilyColors.textSecondary,
+                    labelStyle: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14),
+                    tabs: [
+                      Tab(
+                        text:
+                            'Disponibles${available.isNotEmpty ? ' (${available.length})' : ''}',
+                      ),
+                      Tab(
+                        text:
+                            'Mes missions${myMissions.isNotEmpty ? ' (${myMissions.length})' : ''}',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              body: TabBarView(
+                controller: _tabCtrl,
+                children: [
+                  // ── Tab 1 : disponibles ──
+                  RefreshIndicator(
+                    color: RilyColors.accent,
+                    onRefresh: () async => setState(() {}),
+                    child: available.isEmpty
+                        ? const EmptyState(
+                            emoji: '🔍',
+                            title: 'Aucune mission disponible',
+                            subtitle:
+                                'Reviens dans quelques instants, de nouvelles missions arrivent.',
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: available.length,
+                            itemBuilder: (_, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: AgentMissionCard(
+                                mission: available[i],
+                                isAccepting:
+                                    _acceptingId == available[i].id,
+                                onAccept: () => _accept(available[i].id),
+                                onDetail: () => _goDetail(available[i]),
+                                showAcceptButton: true,
+                              ),
+                            ),
+                          ),
+                  ),
 
-            if (availableMissions.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Aucune mission disponible pour le moment.'),
-                ),
-              )
-            else
-              ...availableMissions.map(
-                (m) => _MissionCard(
-                  mission: m,
-                  showAcceptButton: true,
-                  isAccepting: _acceptingMissionId == m.id,
-                  onAccept: () => _acceptMission(m.id),
-                  onDetail: () => _goToDetail(m),
-                ),
+                  // ── Tab 2 : mes missions ──
+                  RefreshIndicator(
+                    color: RilyColors.accent,
+                    onRefresh: () async => setState(() {}),
+                    child: myMissions.isEmpty
+                        ? const EmptyState(
+                            emoji: '📋',
+                            title: 'Aucune mission assignée',
+                            subtitle:
+                                'Accepte une mission dans l\'onglet disponibles.',
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: myMissions.length,
+                            itemBuilder: (_, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: AgentMissionCard(
+                                mission: myMissions[i],
+                                isAccepting: false,
+                                onAccept: () {},
+                                onDetail: () => _goDetail(myMissions[i]),
+                                showAcceptButton: false,
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
               ),
-
-            const SizedBox(height: 24),
-
-            // ── Assignées ──
-            const Text(
-              'Mes missions assignées',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-
-            if (assignedMissions.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Aucune mission assignée.'),
-                ),
-              )
-            else
-              ...assignedMissions.map(
-                (m) => _MissionCard(
-                  mission: m,
-                  showAcceptButton: false,
-                  isAccepting: false,
-                  onAccept: () {},
-                  onDetail: () => _goToDetail(m),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  Future<void> _acceptMission(String missionId) async {
-    if (_acceptingMissionId != null) return; // déjà une acceptation en cours
-
-    setState(() => _acceptingMissionId = missionId);
-
-    try {
-      await _missionService.acceptMission(missionId);
-      if (!mounted) return;
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mission acceptée !'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _acceptingMissionId = null);
-    }
-  }
-
-  void _goToDetail(Mission mission) {
-    Navigator.pushNamed(
-      context,
-      '/missionDetail',
-      arguments: mission,
-    ).then((_) => setState(() {}));
   }
 }
 
-// ─── Card mission réutilisable ───────────────────────────────────────────────
+// ─── Carte agent ─────────────────────────────────────────────────────────────
 
-class _MissionCard extends StatelessWidget {
+class AgentMissionCard extends StatelessWidget {
   final Mission mission;
-  final bool showAcceptButton;
   final bool isAccepting;
   final VoidCallback onAccept;
   final VoidCallback onDetail;
+  final bool showAcceptButton;
 
-  const _MissionCard({
+  const AgentMissionCard({
+    super.key,
     required this.mission,
-    required this.showAcceptButton,
     required this.isAccepting,
     required this.onAccept,
     required this.onDetail,
+    required this.showAcceptButton,
   });
-
-  String _statusLabel(MissionStatus s) {
-    switch (s) {
-      case MissionStatus.created:
-        return 'Créée';
-      case MissionStatus.accepted:
-        return 'Acceptée';
-      case MissionStatus.onTheWay:
-        return 'En route';
-      case MissionStatus.inProgress:
-        return 'En cours';
-      case MissionStatus.completed:
-        return 'Terminée';
-      case MissionStatus.cancelled:
-        return 'Annulée';
-    }
-  }
-
-  Color _statusColor(MissionStatus s) {
-    switch (s) {
-      case MissionStatus.created:
-        return Colors.grey;
-      case MissionStatus.accepted:
-        return Colors.blue;
-      case MissionStatus.onTheWay:
-        return Colors.orange;
-      case MissionStatus.inProgress:
-        return Colors.deepPurple;
-      case MissionStatus.completed:
-        return Colors.green;
-      case MissionStatus.cancelled:
-        return Colors.red;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(mission.status);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onDetail,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+    return RilyCard(
+      onTap: onDetail,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titre + badges
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Catégorie + badge express
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      mission.category,
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.bold),
-                    ),
+              Expanded(
+                child: Text(
+                  mission.category,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: RilyColors.textPrimary,
+                    letterSpacing: -0.2,
                   ),
-                  if (mission.isExpress)
-                    _badge('⚡ Express', Colors.orange),
-                ],
+                ),
               ),
-              const SizedBox(height: 10),
+              if (mission.isExpress) ...[
+                const ExpressBadge(),
+                const SizedBox(width: 6),
+              ],
+              StatusBadge(mission.status, small: true),
+            ],
+          ),
 
-              Text('📍 ${mission.address}'),
-              const SizedBox(height: 4),
-              Text('🕒 ${mission.timeSlot}'),
-              const SizedBox(height: 4),
+          const SizedBox(height: 12),
 
-              Row(
-                children: [
-                  const Text('📌 '),
-                  _badge(_statusLabel(mission.status), statusColor),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // FIX : on utilise directement totalPrice (le bug "double cast" est corrigé)
-              Text(
-                  '💰 ${mission.totalPrice.toStringAsFixed(0)} MAD'),
-
-              if (mission.note.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '📝 ${mission.note}',
-                  style: const TextStyle(color: Colors.black87),
-                  maxLines: 2,
+          // Adresse
+          Row(
+            children: [
+              const Icon(Icons.location_on_rounded,
+                  size: 14, color: RilyColors.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  mission.address,
+                  style: const TextStyle(
+                      fontSize: 13, color: RilyColors.textSecondary),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-
-              const SizedBox(height: 14),
-
-              // Boutons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: onDetail,
-                      child: const Text('Voir détail'),
-                    ),
-                  ),
-                  if (showAcceptButton) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isAccepting ? null : onAccept,
-                        child: isAccepting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white),
-                              )
-                            : const Text('Accepter'),
-                      ),
-                    ),
-                  ],
-                ],
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _badge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-            color: color, fontWeight: FontWeight.w600, fontSize: 12),
+          const SizedBox(height: 6),
+
+          // Créneau + prix
+          Row(
+            children: [
+              const Icon(Icons.schedule_rounded,
+                  size: 14, color: RilyColors.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  mission.timeSlot,
+                  style: const TextStyle(
+                      fontSize: 13, color: RilyColors.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${mission.totalPrice.toStringAsFixed(0)} MAD',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: RilyColors.accent,
+                ),
+              ),
+            ],
+          ),
+
+          if (mission.note.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              mission.note,
+              style: const TextStyle(
+                  fontSize: 12, color: RilyColors.textMuted),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+
+          const SizedBox(height: 14),
+
+          // Boutons
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: OutlinedButton(
+                    onPressed: onDetail,
+                    child: const Text('Détail'),
+                  ),
+                ),
+              ),
+              if (showAcceptButton) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: ElevatedButton(
+                      onPressed: isAccepting ? null : onAccept,
+                      child: isAccepting
+                          ? const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white),
+                            )
+                          : const Text('Accepter'),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'proof.dart';
 
 enum MissionStatus {
@@ -7,6 +8,59 @@ enum MissionStatus {
   inProgress,
   completed,
   cancelled,
+}
+
+extension MissionStatusExtension on MissionStatus {
+  Color get color {
+    switch (this) {
+      case MissionStatus.created:
+        return const Color(0xFF94A3B8);
+      case MissionStatus.accepted:
+        return const Color(0xFF38BDF8);
+      case MissionStatus.onTheWay:
+        return const Color(0xFFF59E0B);
+      case MissionStatus.inProgress:
+        return const Color(0xFFA78BFA);
+      case MissionStatus.completed:
+        return const Color(0xFF22C55E);
+      case MissionStatus.cancelled:
+        return const Color(0xFFEF4444);
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case MissionStatus.created:
+        return 'Créée';
+      case MissionStatus.accepted:
+        return 'Acceptée';
+      case MissionStatus.onTheWay:
+        return 'En route';
+      case MissionStatus.inProgress:
+        return 'En cours';
+      case MissionStatus.completed:
+        return 'Terminée';
+      case MissionStatus.cancelled:
+        return 'Annulée';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case MissionStatus.created:
+        return '📝';
+      case MissionStatus.accepted:
+        return '✅';
+      case MissionStatus.onTheWay:
+        return '🚗';
+      case MissionStatus.inProgress:
+        return '🔄';
+      case MissionStatus.completed:
+        return '🎉';
+      case MissionStatus.cancelled:
+        return '❌';
+    }
+  }
 }
 
 class Mission {
