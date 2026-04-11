@@ -17,17 +17,20 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final AuthService _authService = AuthService();
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fadeAnim;
 
   bool _otpSent = false;
   bool _isLoading = false;
+
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
     _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
   }
@@ -42,53 +45,82 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
+
     if (phone.isEmpty) {
-      showErrorSnack(context, 'Saisis ton numéro de téléphone.');
+      _showSnack('Saisis ton numéro de téléphone.', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
+
     try {
       await _authService.sendOtp(phone);
+
       if (!mounted) return;
+
       setState(() => _otpSent = true);
-      showSuccessSnack(context, 'Code envoyé — utilise 1234 pour tester.');
+      _showSnack('Code envoyé — utilise 1234 pour tester.');
     } catch (e) {
       if (!mounted) return;
-      showErrorSnack(context, e);
+      _showSnack('Erreur : $e', isError: true);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
+
     if (otp.isEmpty) {
-      showErrorSnack(context, 'Saisis le code reçu.');
+      _showSnack('Saisis le code reçu.', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
+
     try {
       final user = await _authService.verifyOtp(
         phone: _phoneController.text.trim(),
         otp: otp,
       );
+
       if (!mounted) return;
+
       Navigator.pushReplacementNamed(
         context,
         user.role == UserRole.client ? '/clientHome' : '/agentHome',
       );
     } catch (e) {
       if (!mounted) return;
-      showErrorSnack(context, e);
+      _showSnack('Erreur : $e', isError: true);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? RilyColors.error : RilyColors.surfaceElevated,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
+
     return Scaffold(
       body: FadeTransition(
         opacity: _fadeAnim,
@@ -99,8 +131,6 @@ class _LoginScreenState extends State<LoginScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
-
-                // Logo / titre
                 Container(
                   width: 56,
                   height: 56,
@@ -108,19 +138,21 @@ class _LoginScreenState extends State<LoginScreen>
                     color: RilyColors.accentDim,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: RilyColors.accent.withOpacity(0.3)),
+                      color: RilyColors.accent.withOpacity(0.3),
+                    ),
                   ),
                   child: const Center(
-                    child: Text('R',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: RilyColors.accent,
-                        )),
+                    child: Text(
+                      'R',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: RilyColors.accent,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),
-
                 const Text(
                   'Bienvenue sur Rily',
                   style: TextStyle(
@@ -141,10 +173,7 @@ class _LoginScreenState extends State<LoginScreen>
                     height: 1.5,
                   ),
                 ),
-
                 const SizedBox(height: 40),
-
-                // Champ téléphone
                 RilyTextField(
                   controller: _phoneController,
                   label: 'Téléphone',
@@ -152,8 +181,6 @@ class _LoginScreenState extends State<LoginScreen>
                   keyboardType: TextInputType.phone,
                   enabled: !_otpSent && !_isLoading,
                 ),
-
-                // Champ OTP (apparaît après envoi)
                 if (_otpSent) ...[
                   const SizedBox(height: 16),
                   RilyTextField(
@@ -164,17 +191,13 @@ class _LoginScreenState extends State<LoginScreen>
                     enabled: !_isLoading,
                   ),
                 ],
-
                 const SizedBox(height: 24),
-
-                // Bouton principal
                 RilyButton(
                   label: _otpSent ? 'Vérifier le code' : 'Envoyer le code',
                   loadingLabel: _otpSent ? 'Vérification...' : 'Envoi...',
                   isLoading: _isLoading,
                   onPressed: _otpSent ? _verifyOtp : _sendOtp,
                 ),
-
                 if (_otpSent) ...[
                   const SizedBox(height: 16),
                   Center(
@@ -190,15 +213,14 @@ class _LoginScreenState extends State<LoginScreen>
                       child: const Text(
                         'Modifier le numéro',
                         style: TextStyle(
-                            color: RilyColors.textSecondary, fontSize: 14),
+                          color: RilyColors.textSecondary,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
                 ],
-
                 const SizedBox(height: 40),
-
-                // Aide test terrain
                 RilyCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,14 +236,19 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       SizedBox(height: 10),
                       _TestHintRow(
-                          emoji: '📱',
-                          text: 'Numéro finissant par 1 → Agent'),
+                        emoji: '📱',
+                        text: 'Numéro finissant par 1 → Agent',
+                      ),
                       SizedBox(height: 6),
                       _TestHintRow(
-                          emoji: '👤',
-                          text: 'Autre numéro → Client'),
+                        emoji: '👤',
+                        text: 'Autre numéro → Client',
+                      ),
                       SizedBox(height: 6),
-                      _TestHintRow(emoji: '🔑', text: 'OTP = 1234'),
+                      _TestHintRow(
+                        emoji: '🔑',
+                        text: 'OTP = 1234',
+                      ),
                     ],
                   ),
                 ),
@@ -237,7 +264,11 @@ class _LoginScreenState extends State<LoginScreen>
 class _TestHintRow extends StatelessWidget {
   final String emoji;
   final String text;
-  const _TestHintRow({required this.emoji, required this.text});
+
+  const _TestHintRow({
+    required this.emoji,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +279,9 @@ class _TestHintRow extends StatelessWidget {
         Text(
           text,
           style: const TextStyle(
-              fontSize: 13, color: RilyColors.textSecondary),
+            fontSize: 13,
+            color: RilyColors.textSecondary,
+          ),
         ),
       ],
     );
