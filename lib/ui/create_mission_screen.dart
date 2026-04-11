@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/mission.dart';
 import '../services/mission_service.dart';
+import '../services/connectivity_service.dart';
+import 'theme/app_theme.dart';
+import 'widgets/rily_widgets.dart';
 
 class CreateMissionScreen extends StatefulWidget {
   const CreateMissionScreen({super.key});
@@ -10,27 +12,39 @@ class CreateMissionScreen extends StatefulWidget {
 }
 
 class _CreateMissionScreenState extends State<CreateMissionScreen> {
-  final MissionService missionService = MissionService();
+  final MissionService _missionService = MissionService();
+  final ConnectivityService _connectivity = ConnectivityService();
 
-  final TextEditingController categoryController = TextEditingController();
-  final TextEditingController addressController = TextEditingController();
-  final TextEditingController timeSlotController = TextEditingController();
-  final TextEditingController noteController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _timeSlotController = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
 
-  bool isSubmitting = false;
-  bool isExpress = false;
+  String _category = 'Document';
+  bool _isExpress = false;
+  bool _isSubmitting = false;
+
+  static const List<String> _categories = [
+    'Document',
+    'Petit colis',
+    'Grand colis',
+  ];
+
+  static const Map<String, String> _categoryEmojis = {
+    'Document': '📄',
+    'Petit colis': '📦',
+    'Grand colis': '🚚',
+  };
 
   @override
   void dispose() {
-    categoryController.dispose();
-    addressController.dispose();
-    timeSlotController.dispose();
-    noteController.dispose();
+    _addressController.dispose();
+    _timeSlotController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
-  double _previewBasePrice(String category) {
-    switch (category.trim().toLowerCase()) {
+  double get _basePrice {
+    switch (_category.toLowerCase()) {
       case 'document':
         return 20;
       case 'petit colis':
@@ -40,166 +54,250 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final category = categoryController.text.trim();
-    final basePrice = _previewBasePrice(category);
-    final totalPrice = isExpress ? basePrice + 15 : basePrice;
+  double get _totalPrice => _isExpress ? _basePrice + 15 : _basePrice;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Créer une mission'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: categoryController,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Catégorie',
-                hintText: 'Ex: document, petit colis...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: 'Adresse',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: timeSlotController,
-              decoration: const InputDecoration(
-                labelText: 'Créneau',
-                hintText: 'Ex: Aujourd’hui 14:00 - 16:00',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: noteController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Option express'),
-              subtitle: const Text('+15 MAD'),
-              value: isExpress,
-              onChanged: isSubmitting
-                  ? null
-                  : (value) {
-                      setState(() {
-                        isExpress = value;
-                      });
-                    },
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _priceRow('Prix de base', '${basePrice.toStringAsFixed(0)} MAD'),
-                    const SizedBox(height: 8),
-                    _priceRow('Express', isExpress ? '+15 MAD' : '0 MAD'),
-                    const Divider(height: 24),
-                    _priceRow(
-                      'Total',
-                      '${totalPrice.toStringAsFixed(0)} MAD',
-                      isBold: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isSubmitting ? null : _submitMission,
-                child: Text(isSubmitting ? 'Création...' : 'Créer'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<void> _submit() async {
+    final address = _addressController.text.trim();
+    final timeSlot = _timeSlotController.text.trim();
+    final note = _noteController.text.trim();
 
-  Widget _priceRow(String label, String value, {bool isBold = false}) {
-    final style = TextStyle(
-      fontSize: 16,
-      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-    );
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: style),
-        Text(value, style: style),
-      ],
-    );
-  }
-
-  Future<void> _submitMission() async {
-    final category = categoryController.text.trim();
-    final address = addressController.text.trim();
-    final timeSlot = timeSlotController.text.trim();
-    final note = noteController.text.trim();
-
-    if (category.isEmpty ||
-        address.isEmpty ||
-        timeSlot.isEmpty ||
-        note.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Merci de remplir tous les champs.'),
-        ),
-      );
+    if (address.isEmpty || timeSlot.isEmpty) {
+      showErrorSnack(context, 'Adresse et créneau sont obligatoires.');
       return;
     }
 
-    setState(() {
-      isSubmitting = true;
-    });
+    if (!_connectivity.isConnected) {
+      showErrorSnack(
+          context, 'Pas de connexion. Vérifie ton réseau et réessaie.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
 
     try {
-      final Mission mission = await missionService.createMission(
-        category: category,
+      final mission = await _missionService.createMission(
+        category: _category,
         address: address,
         timeSlot: timeSlot,
-        note: note,
-        isExpress: isExpress,
+        note: note.isEmpty ? '' : note,
+        isExpress: _isExpress,
       );
 
       if (!mounted) return;
 
-      Navigator.pushNamed(
+      showSuccessSnack(context, 'Mission créée !');
+      Navigator.pushReplacementNamed(
         context,
         '/missionStatus',
         arguments: mission,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur: $e'),
-        ),
-      );
-    } finally {
       if (!mounted) return;
-      setState(() {
-        isSubmitting = false;
-      });
+      showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nouvelle mission'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Catégorie ──
+                  const SectionHeader('CATÉGORIE'),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: _categories.map((cat) {
+                      final selected = cat == _category;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _category = cat),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 14, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? RilyColors.accentDim
+                                    : RilyColors.surface,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: selected
+                                      ? RilyColors.accent
+                                      : RilyColors.surfaceBorder,
+                                  width: selected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _categoryEmojis[cat] ?? '📦',
+                                    style: const TextStyle(fontSize: 22),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    cat,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
+                                      color: selected
+                                          ? RilyColors.accent
+                                          : RilyColors.textSecondary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Adresse ──
+                  const SectionHeader('DÉTAILS'),
+                  const SizedBox(height: 14),
+                  RilyTextField(
+                    controller: _addressController,
+                    label: 'Adresse de livraison',
+                    hint: 'Ex: 12 rue Mohammed V, Casablanca',
+                  ),
+                  const SizedBox(height: 14),
+                  RilyTextField(
+                    controller: _timeSlotController,
+                    label: 'Créneau',
+                    hint: 'Ex: Aujourd\'hui 14h–16h',
+                  ),
+                  const SizedBox(height: 14),
+                  RilyTextField(
+                    controller: _noteController,
+                    label: 'Note (optionnel)',
+                    hint: 'Instructions particulières...',
+                    maxLines: 3,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Option express ──
+                  const SectionHeader('OPTIONS'),
+                  const SizedBox(height: 14),
+                  RilyCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: RilyColors.expressDim,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Center(
+                              child: Text('⚡',
+                                  style: TextStyle(fontSize: 20))),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Mode Express',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: RilyColors.textPrimary),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Priorité + majoration +15 MAD',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: RilyColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _isExpress,
+                          onChanged: _isSubmitting
+                              ? null
+                              : (v) => setState(() => _isExpress = v),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Récap prix ──
+                  const SectionHeader('TARIF'),
+                  const SizedBox(height: 14),
+                  RilyCard(
+                    borderColor: RilyColors.accent.withOpacity(0.2),
+                    child: Column(
+                      children: [
+                        PriceRow(
+                            'Prix de base',
+                            '${_basePrice.toStringAsFixed(0)} MAD'),
+                        if (_isExpress)
+                          const PriceRow('Express', '+15 MAD',
+                              valueColor: RilyColors.express),
+                        const Divider(height: 20),
+                        PriceRow(
+                          'Total',
+                          '${_totalPrice.toStringAsFixed(0)} MAD',
+                          isTotal: true,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Bouton sticky en bas ──
+          Container(
+            padding: EdgeInsets.fromLTRB(
+                20, 12, 20, MediaQuery.of(context).padding.bottom + 16),
+            decoration: BoxDecoration(
+              color: RilyColors.bg,
+              border: const Border(
+                  top: BorderSide(color: RilyColors.surfaceBorder)),
+            ),
+            child: RilyButton(
+              label: 'Créer la mission',
+              loadingLabel: 'Création en cours...',
+              isLoading: _isSubmitting,
+              icon: Icons.rocket_launch_rounded,
+              onPressed: _submit,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
