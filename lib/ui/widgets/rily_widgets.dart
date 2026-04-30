@@ -67,9 +67,9 @@ class StatusBadge extends StatelessWidget {
         vertical: small ? 3 : 5,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
         '${status.emoji}  ${status.label}',
@@ -98,7 +98,8 @@ class ExpressBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: RilyColors.expressDim,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: RilyColors.express.withOpacity(0.3)),
+        border: Border.all(
+            color: RilyColors.express.withValues(alpha: 0.35)),
       ),
       child: const Text(
         '⚡ Express',
@@ -142,7 +143,7 @@ class RilyButton extends StatelessWidget {
 
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 52,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: isEnabled ? bg : RilyColors.surfaceElevated,
@@ -254,7 +255,7 @@ class ConnectivityBanner extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: RilyColors.error.withOpacity(0.12),
+      color: RilyColors.error.withValues(alpha: 0.12),
       child: Row(
         children: [
           const Icon(Icons.wifi_off_rounded,
@@ -306,24 +307,24 @@ class AlertBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (type) {
       AlertType.success => RilyColors.success,
-      AlertType.error => RilyColors.error,
+      AlertType.error   => RilyColors.error,
       AlertType.warning => RilyColors.warning,
-      AlertType.info => RilyColors.info,
+      AlertType.info    => RilyColors.info,
     };
     final defaultIcon = switch (type) {
       AlertType.success => Icons.check_circle_outline_rounded,
-      AlertType.error => Icons.error_outline_rounded,
+      AlertType.error   => Icons.error_outline_rounded,
       AlertType.warning => Icons.warning_amber_rounded,
-      AlertType.info => Icons.info_outline_rounded,
+      AlertType.info    => Icons.info_outline_rounded,
     };
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,10 +367,10 @@ class SectionHeader extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: RilyColors.textSecondary,
-            letterSpacing: 1.2,
+            color: RilyColors.textMuted,
+            letterSpacing: 1.4,
           ),
         ),
         const SizedBox(width: 10),
@@ -389,7 +390,7 @@ class SectionHeader extends StatelessWidget {
 
 class StarRating extends StatelessWidget {
   final int selected;
-  final void Function(int)? onSelect; // null = lecture seule
+  final void Function(int)? onSelect;
   final double size;
 
   const StarRating({
@@ -446,19 +447,16 @@ class PriceRow extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: isTotal ? 15 : 14,
-              fontWeight:
-                  isTotal ? FontWeight.w700 : FontWeight.w400,
-              color: isTotal
-                  ? RilyColors.textPrimary
-                  : RilyColors.textSecondary,
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+              color:
+                  isTotal ? RilyColors.textPrimary : RilyColors.textSecondary,
             ),
           ),
           Text(
             value,
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
-              fontWeight:
-                  isTotal ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w500,
               color: valueColor ??
                   (isTotal ? RilyColors.accent : RilyColors.textPrimary),
             ),
@@ -490,8 +488,9 @@ void showSuccessSnack(BuildContext context, String message) {
 }
 
 void showErrorSnack(BuildContext context, Object error) {
-  final msg =
-      error is Exception ? error.toString().replaceFirst('Exception: ', '') : '$error';
+  final msg = error is Exception
+      ? error.toString().replaceFirst('Exception: ', '')
+      : '$error';
   ScaffoldMessenger.of(context).hideCurrentSnackBar();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(

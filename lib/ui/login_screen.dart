@@ -138,8 +138,7 @@ class _LoginScreenState extends State<LoginScreen>
                     color: RilyColors.accentDim,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: RilyColors.accent.withOpacity(0.3),
-                    ),
+                        color: RilyColors.accent.withValues(alpha: 0.3)),
                   ),
                   child: const Center(
                     child: Text(

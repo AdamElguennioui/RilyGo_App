@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/mission.dart';
-import '../services/auth_service.dart';
 import '../services/mission_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
@@ -17,7 +16,6 @@ class MissionStatusScreen extends StatefulWidget {
 
 class _MissionStatusScreenState extends State<MissionStatusScreen> {
   final MissionService _ms = MissionService();
-  final AuthService _auth = AuthService();
   final ConnectivityService _conn = ConnectivityService();
 
   bool _isOffline = false;
@@ -187,7 +185,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                         const SizedBox(height: 14),
                         RilyCard(
                           borderColor:
-                              RilyColors.success.withOpacity(0.25),
+                              RilyColors.success.withValues(alpha: 0.25),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -282,7 +280,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                         const SizedBox(height: 14),
                         RilyCard(
                           borderColor:
-                              RilyColors.success.withOpacity(0.25),
+                              RilyColors.success.withValues(alpha: 0.25),
                           child: Row(
                             children: [
                               Column(
@@ -334,7 +332,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                               foregroundColor: RilyColors.error,
                               side: BorderSide(
                                   color:
-                                      RilyColors.error.withOpacity(0.4)),
+                                      RilyColors.error.withValues(alpha: 0.4)),
                               shape: RoundedRectangleBorder(
                                   borderRadius:
                                       BorderRadius.circular(12)),
@@ -535,7 +533,7 @@ class _TimelineWidget extends StatelessWidget {
                       width: 2,
                       height: 32,
                       color: i < currentIndex
-                          ? status.color.withOpacity(0.4)
+                          ? status.color.withValues(alpha: 0.4)
                           : RilyColors.surfaceBorder,
                     ),
                 ],

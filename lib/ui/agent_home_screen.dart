@@ -130,14 +130,14 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF6C63FF), Color(0xFF9B8BFF)],
+                          colors: [RilyColors.gradientStart, RilyColors.gradientEnd],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: RilyColors.accent.withOpacity(0.25),
+                            color: RilyColors.accent.withValues(alpha: 0.2),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -177,7 +177,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -289,14 +289,14 @@ class _ActiveMissionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return RilyCard(
       onTap: onTap,
-      borderColor: mission.status.color.withOpacity(0.25),
+      borderColor: mission.status.color.withValues(alpha: 0.25),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: mission.status.color.withOpacity(0.12),
+              color: mission.status.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(

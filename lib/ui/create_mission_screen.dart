@@ -254,7 +254,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   const SectionHeader('TARIF'),
                   const SizedBox(height: 14),
                   RilyCard(
-                    borderColor: RilyColors.accent.withOpacity(0.2),
+                    borderColor: RilyColors.accent.withValues(alpha: 0.2),
                     child: Column(
                       children: [
                         PriceRow(

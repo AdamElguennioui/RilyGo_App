@@ -231,7 +231,9 @@ class MissionService {
     final user = _authService.currentUser;
     if (user == null) return false;
     if (mission.status == MissionStatus.completed ||
-        mission.status == MissionStatus.cancelled) return false;
+        mission.status == MissionStatus.cancelled) {
+      return false;
+    }
 
     if (user.role == UserRole.client) {
       return mission.clientId == user.id &&

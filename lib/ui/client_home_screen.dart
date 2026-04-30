@@ -206,14 +206,14 @@ class _NewMissionButton extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF9B8BFF)],
+            colors: [RilyColors.gradientStart, RilyColors.gradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: RilyColors.accent.withOpacity(0.25),
+              color: RilyColors.accent.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -249,7 +249,7 @@ class _NewMissionButton extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.add_rounded,
@@ -293,8 +293,16 @@ class _ClientMissionCard extends StatelessWidget {
                   color: RilyColors.accentDim,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(
-                  child: Text('📦', style: TextStyle(fontSize: 20)),
+                child: Center(
+                  child: Text(
+                    const {
+                      'Document': '📄',
+                      'Petit colis': '📦',
+                      'Grand colis': '🚚',
+                    }[mission.category] ??
+                        '📦',
+                    style: const TextStyle(fontSize: 20),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

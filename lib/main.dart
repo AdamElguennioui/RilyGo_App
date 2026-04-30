@@ -65,8 +65,8 @@ class RilyApp extends StatelessWidget {
 
   PageRouteBuilder _slide(Widget page) {
     return PageRouteBuilder(
-      pageBuilder: (_, animation, __) => page,
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (ctx, animation, secondaryAnimation) => page,
+      transitionsBuilder: (ctx, animation, secondaryAnimation, child) {
         return SlideTransition(
           position: Tween<Offset>(
             begin: const Offset(1, 0),

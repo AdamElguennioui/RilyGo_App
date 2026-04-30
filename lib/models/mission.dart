@@ -16,11 +16,11 @@ extension MissionStatusExtension on MissionStatus {
       case MissionStatus.created:
         return const Color(0xFF94A3B8);
       case MissionStatus.accepted:
-        return const Color(0xFF38BDF8);
+        return const Color(0xFF60A5FA);
       case MissionStatus.onTheWay:
         return const Color(0xFFF59E0B);
       case MissionStatus.inProgress:
-        return const Color(0xFFA78BFA);
+        return const Color(0xFF00C896);
       case MissionStatus.completed:
         return const Color(0xFF22C55E);
       case MissionStatus.cancelled:

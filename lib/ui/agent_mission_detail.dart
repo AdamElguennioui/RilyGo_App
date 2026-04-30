@@ -255,7 +255,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                         const SizedBox(height: 14),
                         RilyCard(
                           borderColor:
-                              RilyColors.warning.withOpacity(0.25),
+                              RilyColors.warning.withValues(alpha: 0.25),
                           child: Row(
                             children: [
                               Column(
@@ -305,7 +305,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                               foregroundColor: RilyColors.error,
                               side: BorderSide(
                                   color:
-                                      RilyColors.error.withOpacity(0.35)),
+                                      RilyColors.error.withValues(alpha: 0.35)),
                               shape: RoundedRectangleBorder(
                                   borderRadius:
                                       BorderRadius.circular(12)),
@@ -511,18 +511,18 @@ class _StepButton extends StatelessWidget {
     Color border;
 
     if (isDone) {
-      bg = RilyColors.success.withOpacity(0.08);
+      bg = RilyColors.success.withValues(alpha: 0.08);
       fg = RilyColors.success;
-      border = RilyColors.success.withOpacity(0.2);
+      border = RilyColors.success.withValues(alpha: 0.2);
     } else if (isActive) {
       bg = RilyColors.accentDim;
       fg = RilyColors.accent;
-      border = RilyColors.accent.withOpacity(0.4);
+      border = RilyColors.accent.withValues(alpha: 0.4);
     } else {
       bg = RilyColors.surfaceElevated;
       fg = disabled ? RilyColors.error : RilyColors.textMuted;
       border = disabled
-          ? RilyColors.error.withOpacity(0.2)
+          ? RilyColors.error.withValues(alpha: 0.2)
           : RilyColors.surfaceBorder;
     }
 
@@ -637,7 +637,7 @@ class _ProofUploadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return RilyCard(
       borderColor: uploadFailed
-          ? RilyColors.error.withOpacity(0.25)
+          ? RilyColors.error.withValues(alpha: 0.25)
           : RilyColors.surfaceBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,7 +667,7 @@ class _ProofUploadCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: LinearProgressIndicator(
                 backgroundColor:
-                    RilyColors.accent.withOpacity(0.1),
+                    RilyColors.accent.withValues(alpha: 0.1),
                 color: RilyColors.accent,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -732,7 +732,7 @@ class _ProofDoneCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RilyCard(
-      borderColor: RilyColors.success.withOpacity(0.25),
+      borderColor: RilyColors.success.withValues(alpha: 0.25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

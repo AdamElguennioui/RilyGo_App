@@ -4,37 +4,47 @@ import 'package:flutter/services.dart';
 class RilyColors {
   RilyColors._();
 
-  static const bg = Color(0xFF0D0D14);
-  static const surface = Color(0xFF16161F);
-  static const surfaceElevated = Color(0xFF1E1E2A);
-  static const surfaceBorder = Color(0xFF2A2A3A);
+  // ── Backgrounds (deep navy) ───────────────────────────────────────────────
+  static const bg              = Color(0xFF060E1B);
+  static const surface         = Color(0xFF0B1629);
+  static const surfaceElevated = Color(0xFF0F1E38);
+  static const surfaceBorder   = Color(0xFF1B304E);
 
-  static const accent = Color(0xFF6C63FF);
-  static const accentLight = Color(0xFF8B85FF);
-  static const accentDim = Color(0x266C63FF);
+  // ── Accent (emerald green) ────────────────────────────────────────────────
+  static const accent      = Color(0xFF00C896);
+  static const accentLight = Color(0xFF33D9AA);
+  static const accentDim   = Color(0x1A00C896); // ~10 % alpha
 
-  static const success = Color(0xFF22C55E);
+  // ── Semantic ──────────────────────────────────────────────────────────────
+  static const success    = Color(0xFF22C55E);
   static const successDim = Color(0x2022C55E);
-  static const warning = Color(0xFFF59E0B);
+  static const warning    = Color(0xFFF59E0B);
   static const warningDim = Color(0x20F59E0B);
-  static const error = Color(0xFFEF4444);
-  static const errorDim = Color(0x20EF4444);
-  static const info = Color(0xFF38BDF8);
-  static const infoDim = Color(0x2038BDF8);
+  static const error      = Color(0xFFEF4444);
+  static const errorDim   = Color(0x20EF4444);
+  static const info       = Color(0xFF60A5FA);
+  static const infoDim    = Color(0x2060A5FA);
 
-  static const statusCreated = Color(0xFF94A3B8);
-  static const statusAccepted = Color(0xFF38BDF8);
-  static const statusOnTheWay = Color(0xFFF59E0B);
-  static const statusInProgress = Color(0xFFA78BFA);
-  static const statusCompleted = Color(0xFF22C55E);
-  static const statusCancelled = Color(0xFFEF4444);
+  // ── Status ────────────────────────────────────────────────────────────────
+  static const statusCreated    = Color(0xFF94A3B8);
+  static const statusAccepted   = Color(0xFF60A5FA);
+  static const statusOnTheWay   = Color(0xFFF59E0B);
+  static const statusInProgress = Color(0xFF00C896);
+  static const statusCompleted  = Color(0xFF22C55E);
+  static const statusCancelled  = Color(0xFFEF4444);
 
-  static const textPrimary = Color(0xFFF1F1F5);
-  static const textSecondary = Color(0xFF8B8BA0);
-  static const textMuted = Color(0xFF4A4A60);
+  // ── Text ──────────────────────────────────────────────────────────────────
+  static const textPrimary   = Color(0xFFE8F0FE);
+  static const textSecondary = Color(0xFF7B9AB8);
+  static const textMuted     = Color(0xFF3A5270);
 
-  static const express = Color(0xFFFF6B35);
-  static const expressDim = Color(0x20FF6B35);
+  // ── Express ───────────────────────────────────────────────────────────────
+  static const express    = Color(0xFFFF7043);
+  static const expressDim = Color(0x20FF7043);
+
+  // ── CTA gradient (navy → emerald) ─────────────────────────────────────────
+  static const gradientStart = Color(0xFF1E4785);
+  static const gradientEnd   = Color(0xFF00C896);
 }
 
 class RilyTheme {
@@ -47,7 +57,7 @@ class RilyTheme {
       scaffoldBackgroundColor: RilyColors.bg,
       colorScheme: const ColorScheme.dark(
         primary: RilyColors.accent,
-        secondary: RilyColors.accentLight,
+        secondary: RilyColors.info,
         surface: RilyColors.surface,
         error: RilyColors.error,
         onPrimary: Colors.white,
@@ -71,14 +81,84 @@ class RilyTheme {
         ),
       ),
       cardTheme: CardThemeData(
-  color: RilyColors.surface,
-  elevation: 0,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(16),
-    side: const BorderSide(color: RilyColors.surfaceBorder, width: 1),
-  ),
-  margin: EdgeInsets.zero,
-),
+        color: RilyColors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: RilyColors.surfaceBorder, width: 1),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: RilyColors.surfaceElevated,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: RilyColors.surfaceBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: RilyColors.surfaceBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: RilyColors.accent, width: 1.5),
+        ),
+        labelStyle: const TextStyle(
+            color: RilyColors.textSecondary, fontSize: 14),
+        hintStyle:
+            const TextStyle(color: RilyColors.textMuted, fontSize: 14),
+        floatingLabelStyle:
+            const TextStyle(color: RilyColors.accent, fontSize: 12),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: RilyColors.accent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: RilyColors.accent,
+          side: const BorderSide(color: RilyColors.surfaceBorder),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? RilyColors.accent
+                : RilyColors.textMuted),
+        trackColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? RilyColors.accentDim
+                : RilyColors.surfaceBorder),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        indicatorColor: RilyColors.accent,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelColor: RilyColors.accent,
+        unselectedLabelColor: RilyColors.textSecondary,
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        dividerColor: RilyColors.surfaceBorder,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: RilyColors.surfaceBorder,
+        space: 1,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: RilyColors.surfaceElevated,
+        contentTextStyle: const TextStyle(color: RilyColors.textPrimary),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }
