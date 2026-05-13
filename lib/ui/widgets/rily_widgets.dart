@@ -102,7 +102,7 @@ class ExpressBadge extends StatelessWidget {
             color: RilyColors.express.withValues(alpha: 0.35)),
       ),
       child: const Text(
-        '⚡ Express',
+        '⚡ Prioritaire',
         style: TextStyle(
           color: RilyColors.express,
           fontSize: 12,

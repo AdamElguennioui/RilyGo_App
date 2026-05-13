@@ -101,7 +101,7 @@ class _AgentMissionListState extends State<AgentMissionList>
                         size: 18),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  title: const Text('Missions'),
+                  title: const Text('Dossiers'),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded,
@@ -120,11 +120,11 @@ class _AgentMissionListState extends State<AgentMissionList>
                     tabs: [
                       Tab(
                         text:
-                            'Disponibles${available.isNotEmpty ? ' (${available.length})' : ''}',
+                            'À prendre en charge${available.isNotEmpty ? ' (${available.length})' : ''}',
                       ),
                       Tab(
                         text:
-                            'Mes missions${myMissions.isNotEmpty ? ' (${myMissions.length})' : ''}',
+                            'Mes dossiers${myMissions.isNotEmpty ? ' (${myMissions.length})' : ''}',
                       ),
                     ],
                   ),
@@ -140,9 +140,9 @@ class _AgentMissionListState extends State<AgentMissionList>
                     child: available.isEmpty
                         ? const EmptyState(
                             emoji: '🔍',
-                            title: 'Aucune mission disponible',
+                            title: 'Aucun dossier disponible',
                             subtitle:
-                                'Reviens dans quelques instants, de nouvelles missions arrivent.',
+                                'De nouveaux dossiers clients apparaîtront ici dès leur soumission.',
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -168,9 +168,9 @@ class _AgentMissionListState extends State<AgentMissionList>
                     child: myMissions.isEmpty
                         ? const EmptyState(
                             emoji: '📋',
-                            title: 'Aucune mission assignée',
+                            title: 'Aucun dossier en cours',
                             subtitle:
-                                'Accepte une mission dans l\'onglet disponibles.',
+                                'Acceptez un dossier dans l\'onglet de gauche.',
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),

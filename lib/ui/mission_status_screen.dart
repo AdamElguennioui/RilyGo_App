@@ -33,11 +33,11 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
   ];
 
   static const _timelineLabels = {
-    MissionStatus.created: 'Mission créée',
-    MissionStatus.accepted: 'Agent assigné',
-    MissionStatus.onTheWay: 'Agent en route',
-    MissionStatus.inProgress: 'Mission en cours',
-    MissionStatus.completed: 'Mission terminée',
+    MissionStatus.created: 'Demande reçue',
+    MissionStatus.accepted: 'Expert assigné',
+    MissionStatus.onTheWay: 'Expert en déplacement',
+    MissionStatus.inProgress: 'Démarche en cours',
+    MissionStatus.completed: 'Dossier clôturé',
   };
 
   @override
@@ -69,7 +69,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => _ConfirmDialog(
-        title: 'Annuler la mission',
+        title: 'Annuler le dossier',
         body: 'Cette action est irréversible.',
         confirmLabel: 'Oui, annuler',
         isDanger: true,
@@ -141,7 +141,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                         size: 18),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  title: const Text('Suivi de mission'),
+                  title: const Text('Suivi du dossier'),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded,
@@ -169,7 +169,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
 
                       // ── Timeline ──
                       if (!isCancelled) ...[
-                        const SectionHeader('AVANCEMENT'),
+                        const SectionHeader('AVANCEMENT DU DOSSIER'),
                         const SizedBox(height: 16),
                         _TimelineWidget(
                             timeline: _timeline,
@@ -181,7 +181,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
 
                       // ── Preuve ──
                       if (m.proof != null) ...[
-                        const SectionHeader('PREUVE DE LIVRAISON'),
+                        const SectionHeader("RAPPORT D'EXÉCUTION"),
                         const SizedBox(height: 14),
                         RilyCard(
                           borderColor:
@@ -195,7 +195,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                                       color: RilyColors.success, size: 18),
                                   SizedBox(width: 8),
                                   Text(
-                                    'Preuve enregistrée',
+                                    "Rapport d'exécution validé",
                                     style: TextStyle(
                                       color: RilyColors.success,
                                       fontWeight: FontWeight.w600,
@@ -224,7 +224,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                           child: Column(
                             children: [
                               const Text(
-                                'Comment s\'est passée la livraison ?',
+                                'Comment évaluez-vous cette prestation ?',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -351,7 +351,7 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
                                     size: 18),
                             label: Text(_isCancelling
                                 ? 'Annulation...'
-                                : 'Annuler la mission'),
+                                : 'Annuler le dossier'),
                           ),
                         ),
                         const SizedBox(height: 32),

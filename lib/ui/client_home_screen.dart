@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/mission.dart';
+import '../models/service_category.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/mission_service.dart';
@@ -15,51 +16,56 @@ class ClientHomeScreen extends StatefulWidget {
 }
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
-  final AuthService _authService = AuthService();
-  final MissionService _missionService = MissionService();
-  final ConnectivityService _connectivity = ConnectivityService();
-
+  final AuthService _auth = AuthService();
+  final MissionService _ms = MissionService();
+  final ConnectivityService _conn = ConnectivityService();
   bool _isOffline = false;
 
   @override
   void initState() {
     super.initState();
-    _connectivity.onConnectivityChanged.listen((connected) {
-      if (mounted) setState(() => _isOffline = !connected);
-    });
-    _isOffline = !_connectivity.isConnected;
+    _conn.onConnectivityChanged
+        .listen((c) => mounted ? setState(() => _isOffline = !c) : null);
+    _isOffline = !_conn.isConnected;
   }
 
   Future<void> _logout() async {
-    await _authService.logout();
+    await _auth.logout();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
   }
 
+  void _openNewDossier({ServiceCategory? category}) async {
+    await Navigator.pushNamed(context, '/createMission', arguments: category);
+    if (mounted) setState(() {});
+  }
+
+  void _openDossier(Mission m) {
+    Navigator.pushNamed(context, '/missionStatus', arguments: m)
+        .then((_) => mounted ? setState(() {}) : null);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
-
+    final user = _auth.currentUser;
     if (user == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
-      });
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => Navigator.pushNamedAndRemoveUntil(
+              context, '/login', (r) => false));
       return const Scaffold(body: SizedBox.shrink());
     }
-
     if (user.role != UserRole.client) {
       return const Scaffold(
-        body: Center(child: Text('Accès réservé aux clients.')),
-      );
+          body: Center(child: Text('Accès réservé aux clients.')));
     }
 
-    final missions = _missionService.getClientMissions(user.id);
-    final activeMissions = missions
+    final missions = _ms.getClientMissions(user.id);
+    final active = missions
         .where((m) =>
             m.status != MissionStatus.completed &&
             m.status != MissionStatus.cancelled)
         .toList();
-    final pastMissions = missions
+    final past = missions
         .where((m) =>
             m.status == MissionStatus.completed ||
             m.status == MissionStatus.cancelled)
@@ -69,44 +75,52 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       body: Column(
         children: [
           ConnectivityBanner(
-            isOffline: _isOffline,
-            onRetry: () => setState(() {}),
-          ),
+              isOffline: _isOffline, onRetry: () => setState(() {})),
           Expanded(
             child: RefreshIndicator(
               color: RilyColors.accent,
               onRefresh: () async => setState(() {}),
               child: CustomScrollView(
                 slivers: [
-                  // ── App Bar ──
+                  // ── App Bar ────────────────────────────────────────────────
                   SliverAppBar(
                     floating: true,
                     backgroundColor: RilyColors.bg,
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    title: Row(
                       children: [
-                        const Text(
-                          'Rily',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: RilyColors.accent,
-                            letterSpacing: -0.5,
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: RilyColors.accentDim,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'R',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: RilyColors.accent,
+                              ),
+                            ),
                           ),
                         ),
-                        Text(
-                          'Bonjour 👋',
+                        const SizedBox(width: 10),
+                        const Text(
+                          'RilyGo',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: RilyColors.textSecondary,
-                            fontWeight: FontWeight.w400,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: RilyColors.textPrimary,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ],
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.logout_rounded,
+                        icon: const Icon(Icons.person_outline_rounded,
                             color: RilyColors.textSecondary),
                         onPressed: _logout,
                         tooltip: 'Déconnexion',
@@ -114,66 +128,68 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     ],
                     bottom: PreferredSize(
                       preferredSize: const Size.fromHeight(1),
-                      child: Container(
-                          height: 1, color: RilyColors.surfaceBorder),
+                      child:
+                          Container(height: 1, color: RilyColors.surfaceBorder),
                     ),
                   ),
 
-                  SliverPadding(
-                    padding: const EdgeInsets.all(20),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        // ── CTA Nouvelle mission ──
-                        _NewMissionButton(
-                          onTap: () async {
-                            await Navigator.pushNamed(
-                                context, '/createMission');
-                            setState(() {});
-                          },
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Hero ──────────────────────────────────────────
+                        _HeroSection(
+                            onNewDossier: () => _openNewDossier()),
+
+                        // ── Trust strip ───────────────────────────────────
+                        const _TrustStrip(),
+
+                        // ── Services ──────────────────────────────────────
+                        const SizedBox(height: 28),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _ServicesSection(
+                            onCategoryTap: (cat) =>
+                                _openNewDossier(category: cat),
+                          ),
                         ),
 
-                        const SizedBox(height: 28),
-
-                        // ── Missions actives ──
-                        const SectionHeader('MISSIONS EN COURS'),
-                        const SizedBox(height: 14),
-
-                        if (activeMissions.isEmpty)
-                          const EmptyState(
-                            emoji: '🎯',
-                            title: 'Aucune mission active',
-                            subtitle:
-                                'Crée ta première mission pour commencer.',
-                          )
-                        else
-                          ...activeMissions.map(
-                            (m) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _ClientMissionCard(
-                                mission: m,
-                                onTap: () => _openStatus(m),
-                              ),
-                            ),
-                          ),
-
-                        if (pastMissions.isNotEmpty) ...[
-                          const SizedBox(height: 28),
-                          const SectionHeader('HISTORIQUE'),
-                          const SizedBox(height: 14),
-                          ...pastMissions.map(
-                            (m) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _ClientMissionCard(
-                                mission: m,
-                                onTap: () => _openStatus(m),
-                                muted: true,
-                              ),
+                        // ── Active dossiers ───────────────────────────────
+                        if (active.isNotEmpty) ...[
+                          const SizedBox(height: 32),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
+                            child: _DossiersSection(
+                              title: 'DOSSIERS EN COURS',
+                              missions: active,
+                              onTap: _openDossier,
                             ),
                           ),
                         ],
 
-                        const SizedBox(height: 32),
-                      ]),
+                        // ── History ───────────────────────────────────────
+                        if (past.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
+                            child: _DossiersSection(
+                              title: 'HISTORIQUE',
+                              missions: past,
+                              onTap: _openDossier,
+                              muted: true,
+                            ),
+                          ),
+                        ],
+
+                        // ── Empty state ───────────────────────────────────
+                        if (active.isEmpty && past.isEmpty)
+                          _EmptyDossiers(
+                              onTap: () => _openNewDossier()),
+
+                        const SizedBox(height: 48),
+                      ],
                     ),
                   ),
                 ],
@@ -184,76 +200,246 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ),
     );
   }
+}
 
-  void _openStatus(Mission mission) {
-    Navigator.pushNamed(context, '/missionStatus', arguments: mission)
-        .then((_) => setState(() {}));
+// ─────────────────────────────────────────────────────────────────────────────
+//  Hero section
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HeroSection extends StatelessWidget {
+  final VoidCallback onNewDossier;
+  const _HeroSection({required this.onNewDossier});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tag
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: RilyColors.accentDim,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: RilyColors.accent.withValues(alpha: 0.2)),
+            ),
+            child: const Text(
+              'Votre concierge administratif',
+              style: TextStyle(
+                fontSize: 12,
+                color: RilyColors.accent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Headline
+          const Text(
+            'Déléguez vos\ndémarches\nadministratives.',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: RilyColors.textPrimary,
+              letterSpacing: -0.8,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Subline
+          const Text(
+            'Des experts certifiés prennent en charge\nvos formalités de A à Z. Confidentiellement.',
+            style: TextStyle(
+              fontSize: 15,
+              color: RilyColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // CTA
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: RilyColors.accent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: onNewDossier,
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text(
+                'Soumettre un dossier',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-// ─── Bouton nouvelle mission ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Trust strip
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _NewMissionButton extends StatelessWidget {
+class _TrustStrip extends StatelessWidget {
+  const _TrustStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: const BoxDecoration(
+        color: RilyColors.surface,
+        border: Border.symmetric(
+          horizontal: BorderSide(color: RilyColors.surfaceBorder),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: const [
+            _TrustItem(
+                icon: Icons.verified_user_outlined,
+                label: 'Experts vérifiés'),
+            SizedBox(width: 24),
+            _TrustItem(
+                icon: Icons.lock_outline_rounded,
+                label: 'Documents sécurisés'),
+            SizedBox(width: 24),
+            _TrustItem(
+                icon: Icons.track_changes_rounded,
+                label: 'Suivi en temps réel'),
+            SizedBox(width: 24),
+            _TrustItem(
+                icon: Icons.shield_outlined,
+                label: 'Confidentialité garantie'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _TrustItem({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: RilyColors.accent),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: RilyColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Services grid
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ServicesSection extends StatelessWidget {
+  final void Function(ServiceCategory) onCategoryTap;
+  const _ServicesSection({required this.onCategoryTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader('NOS SERVICES'),
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.25,
+          children: kServiceCategories
+              .map((cat) => _ServiceCard(
+                    category: cat,
+                    onTap: () => onCategoryTap(cat),
+                  ))
+              .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _ServiceCard extends StatelessWidget {
+  final ServiceCategory category;
   final VoidCallback onTap;
-  const _NewMissionButton({required this.onTap});
+  const _ServiceCard({required this.category, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [RilyColors.gradientStart, RilyColors.gradientEnd],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: RilyColors.accent.withValues(alpha: 0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: RilyColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: RilyColors.surfaceBorder),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Nouvelle mission',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Document, colis, livraison...',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: category.accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child:
+                    Text(category.emoji, style: const TextStyle(fontSize: 18)),
               ),
             ),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+            const Spacer(),
+            Text(
+              category.title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: RilyColors.textPrimary,
+                height: 1.3,
               ),
-              child: const Icon(Icons.add_rounded,
-                  color: Colors.white, size: 24),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              category.subtitle,
+              style: const TextStyle(fontSize: 10, color: RilyColors.textMuted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -262,48 +448,70 @@ class _NewMissionButton extends StatelessWidget {
   }
 }
 
-// ─── Carte mission client ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Dossiers section
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _ClientMissionCard extends StatelessWidget {
-  final Mission mission;
-  final VoidCallback onTap;
+class _DossiersSection extends StatelessWidget {
+  final String title;
+  final List<Mission> missions;
+  final void Function(Mission) onTap;
   final bool muted;
 
-  const _ClientMissionCard({
-    required this.mission,
+  const _DossiersSection({
+    required this.title,
+    required this.missions,
     required this.onTap,
     this.muted = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title),
+        const SizedBox(height: 14),
+        ...missions.map((m) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child:
+                  _DossierCard(mission: m, onTap: () => onTap(m), muted: muted),
+            )),
+      ],
+    );
+  }
+}
+
+class _DossierCard extends StatelessWidget {
+  final Mission mission;
+  final VoidCallback onTap;
+  final bool muted;
+  const _DossierCard(
+      {required this.mission, required this.onTap, this.muted = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = kCategoryEmojis[mission.category] ?? '📋';
     return RilyCard(
       onTap: onTap,
+      borderColor:
+          muted ? null : mission.status.color.withValues(alpha: 0.2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icône catégorie
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: RilyColors.accentDim,
+                  color: mission.status.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
-                  child: Text(
-                    const {
-                      'Document': '📄',
-                      'Petit colis': '📦',
-                      'Grand colis': '🚚',
-                    }[mission.category] ??
-                        '📦',
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                ),
+                    child:
+                        Text(emoji, style: const TextStyle(fontSize: 20))),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -313,7 +521,7 @@ class _ClientMissionCard extends StatelessWidget {
                     Text(
                       mission.category,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: muted
                             ? RilyColors.textSecondary
@@ -324,9 +532,7 @@ class _ClientMissionCard extends StatelessWidget {
                     Text(
                       mission.address,
                       style: const TextStyle(
-                        fontSize: 13,
-                        color: RilyColors.textSecondary,
-                      ),
+                          fontSize: 12, color: RilyColors.textMuted),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -337,22 +543,17 @@ class _ClientMissionCard extends StatelessWidget {
               StatusBadge(mission.status, small: true),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Créneau + prix + express
           Row(
             children: [
               const Icon(Icons.schedule_rounded,
-                  size: 14, color: RilyColors.textMuted),
+                  size: 13, color: RilyColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   mission.timeSlot,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: RilyColors.textMuted,
-                  ),
+                  style:
+                      const TextStyle(fontSize: 12, color: RilyColors.textMuted),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -365,15 +566,13 @@ class _ClientMissionCard extends StatelessWidget {
               Text(
                 '${mission.totalPrice.toStringAsFixed(0)} MAD',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: RilyColors.accent,
                 ),
               ),
             ],
           ),
-
-          // Rating stars si completed et noté
           if (mission.status == MissionStatus.completed &&
               mission.ratingScore != null) ...[
             const SizedBox(height: 10),
@@ -387,7 +586,7 @@ class _ClientMissionCard extends StatelessWidget {
                     i < mission.ratingScore!
                         ? Icons.star_rounded
                         : Icons.star_outline_rounded,
-                    size: 16,
+                    size: 14,
                     color: RilyColors.warning,
                   ),
                 ),
@@ -395,11 +594,74 @@ class _ClientMissionCard extends StatelessWidget {
                 Text(
                   '${mission.ratingScore}/5',
                   style: const TextStyle(
-                      fontSize: 12, color: RilyColors.textSecondary),
+                      fontSize: 11, color: RilyColors.textSecondary),
                 ),
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Empty state
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyDossiers extends StatelessWidget {
+  final VoidCallback onTap;
+  const _EmptyDossiers({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+      child: Column(
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: RilyColors.accentDim,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Center(
+                child: Text('📋', style: TextStyle(fontSize: 30))),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Aucun dossier en cours',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: RilyColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Soumettez votre première demande.\nUn expert prend en charge vos formalités.',
+            style: TextStyle(
+                fontSize: 14,
+                color: RilyColors.textSecondary,
+                height: 1.55),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: 200,
+            height: 44,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: RilyColors.accent,
+                side: const BorderSide(color: RilyColors.accent),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: onTap,
+              child: const Text('Première demande'),
+            ),
+          ),
         ],
       ),
     );

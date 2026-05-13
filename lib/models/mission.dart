@@ -31,15 +31,15 @@ extension MissionStatusExtension on MissionStatus {
   String get label {
     switch (this) {
       case MissionStatus.created:
-        return 'Créée';
+        return 'Demande reçue';
       case MissionStatus.accepted:
-        return 'Acceptée';
+        return 'Expert assigné';
       case MissionStatus.onTheWay:
-        return 'En route';
+        return 'Prise en charge';
       case MissionStatus.inProgress:
-        return 'En cours';
+        return 'Démarche en cours';
       case MissionStatus.completed:
-        return 'Terminée';
+        return 'Dossier clôturé';
       case MissionStatus.cancelled:
         return 'Annulée';
     }
@@ -48,17 +48,17 @@ extension MissionStatusExtension on MissionStatus {
   String get emoji {
     switch (this) {
       case MissionStatus.created:
-        return '📝';
+        return '📋';
       case MissionStatus.accepted:
-        return '✅';
+        return '👤';
       case MissionStatus.onTheWay:
-        return '🚗';
-      case MissionStatus.inProgress:
         return '🔄';
+      case MissionStatus.inProgress:
+        return '⚙️';
       case MissionStatus.completed:
-        return '🎉';
+        return '✅';
       case MissionStatus.cancelled:
-        return '❌';
+        return '✖️';
     }
   }
 }

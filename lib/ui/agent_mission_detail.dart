@@ -99,7 +99,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
         if (!mounted) return;
         _proofCtrl.clear();
         setState(() {});
-        showSuccessSnack(context, 'Preuve enregistrée ✓');
+        showSuccessSnack(context, "Rapport d'exécution soumis ✓");
       } catch (e) {
         if (!mounted) return;
         showErrorSnack(context, e);
@@ -168,7 +168,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                         size: 18),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  title: const Text('Détail mission'),
+                  title: const Text('Dossier client'),
                 ),
 
                 SliverPadding(
@@ -200,18 +200,18 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
 
                       // ── Progression ──
                       if (!isCancelled && !isCompleted) ...[
-                        const SectionHeader('PROGRESSION'),
+                        const SectionHeader('PROGRESSION DU DOSSIER'),
                         const SizedBox(height: 16),
 
                         _ProgressionCard(
                           mission: m,
                           isLoading: _isUpdating,
                           onEnRoute: () => _updateStatus(
-                              MissionStatus.onTheWay, 'Tu es en route 🚀'),
+                              MissionStatus.onTheWay, 'Prise en charge confirmée ✔️'),
                           onDemarrer: () => _updateStatus(
-                              MissionStatus.inProgress, 'Mission démarrée ⚡'),
+                              MissionStatus.inProgress, 'Démarche lancée ⚙️'),
                           onTerminer: () => _updateStatus(
-                              MissionStatus.completed, 'Mission terminée 🎉'),
+                              MissionStatus.completed, 'Dossier clôturé avec succès ✅'),
                         ),
 
                         const SizedBox(height: 24),
@@ -219,7 +219,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
 
                       // ── Preuve ──
                       if (!isCancelled && !isCompleted) ...[
-                        const SectionHeader('PREUVE DE LIVRAISON'),
+                        const SectionHeader("RAPPORT D'EXÉCUTION"),
                         const SizedBox(height: 14),
 
                         if (m.proof == null)
@@ -243,7 +243,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                       // ── Preuve visible si complété ──
                       if ((isCompleted || isCancelled) &&
                           m.proof != null) ...[
-                        const SectionHeader('PREUVE ENREGISTRÉE'),
+                        const SectionHeader('RAPPORT SOUMIS'),
                         const SizedBox(height: 14),
                         _ProofDoneCard(proof: m.proof!),
                         const SizedBox(height: 24),
@@ -449,8 +449,8 @@ class _ProgressionCard extends StatelessWidget {
       child: Column(
         children: [
           _StepButton(
-            label: '🚀  En route',
-            sublabel: 'Confirme que tu es parti',
+            label: '📍  Prise en charge',
+            sublabel: 'Confirme la prise en charge du dossier',
             isActive: s == MissionStatus.accepted,
             isDone: s.index > MissionStatus.accepted.index,
             isLoading: isLoading && s == MissionStatus.accepted,
@@ -458,8 +458,8 @@ class _ProgressionCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _StepButton(
-            label: '⚡  Démarrer',
-            sublabel: 'Tu es arrivé sur place',
+            label: '⚙️  Lancer la démarche',
+            sublabel: 'Tu es sur place, la démarche commence',
             isActive: s == MissionStatus.onTheWay,
             isDone: s.index > MissionStatus.onTheWay.index,
             isLoading: isLoading && s == MissionStatus.onTheWay,
@@ -467,10 +467,10 @@ class _ProgressionCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _StepButton(
-            label: '✅  Terminer',
+            label: '✔️  Clôturer le dossier',
             sublabel: needsProof
-                ? 'Ajoute une preuve d\'abord'
-                : 'Clôturer la mission',
+                ? 'Soumettre le rapport d\'exécution d\'abord'
+                : 'Valider et clôturer le dossier',
             isActive: s == MissionStatus.inProgress && !needsProof,
             isDone: false,
             isLoading: isLoading && s == MissionStatus.inProgress,
@@ -629,8 +629,8 @@ class _ProofUploadCard extends StatelessWidget {
           ? 'Compression...'
           : 'Upload en cours...';
     }
-    if (uploadFailed) return 'Réessayer l\'upload';
-    return 'Valider la preuve';
+    if (uploadFailed) return "Réessayer l'envoi";
+    return 'Soumettre le rapport';
   }
 
   @override
@@ -653,8 +653,8 @@ class _ProofUploadCard extends StatelessWidget {
 
           RilyTextField(
             controller: controller,
-            label: 'Commentaire de preuve',
-            hint: 'Décris la livraison...',
+            label: "Rapport d'exécution",
+            hint: 'Décrivez les démarches réalisées, les documents déposés...',
             maxLines: 3,
             enabled: isEnabled && !isUploading,
           ),
@@ -742,7 +742,7 @@ class _ProofDoneCard extends StatelessWidget {
                   color: RilyColors.success, size: 18),
               SizedBox(width: 8),
               Text(
-                'Preuve enregistrée',
+                "Rapport d'exécution soumis",
                 style: TextStyle(
                   color: RilyColors.success,
                   fontWeight: FontWeight.w700,

@@ -22,13 +22,28 @@ class MissionService {
   // ─── Pricing ────────────────────────────────────────────────────────────────
 
   double _getBasePrice(String category) {
-    switch (category.trim().toLowerCase()) {
-      case 'document':
-        return 20;
-      case 'petit colis':
-        return 30;
+    switch (category.trim()) {
+      case 'Administration personnelle':
+        return 149;
+      case 'Démarches mobilité':
+        return 199;
+      case 'Formalités entreprise':
+        return 299;
+      case 'Immigration & consulaire':
+        return 249;
+      case "File d'attente":
+        return 99;
+      case 'Notariat & légalisation':
+        return 199;
+      // legacy categories (backward compat)
+      case 'Document':
+        return 149;
+      case 'Petit colis':
+        return 199;
+      case 'Grand colis':
+        return 299;
       default:
-        return 40;
+        return 149;
     }
   }
 
@@ -49,7 +64,7 @@ class MissionService {
     }
 
     final basePrice = _getBasePrice(category);
-    final totalPrice = isExpress ? basePrice + 15 : basePrice;
+    final totalPrice = isExpress ? basePrice + 50 : basePrice;
 
     final mission = Mission(
       id: 'mission_$_counter',

@@ -56,7 +56,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Rily Agent',
+                    'RilyGo — Expert',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -105,14 +105,14 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                           child: _StatCard(
-                              label: 'En cours',
+                              label: 'En traitement',
                               value: '$inProgress',
                               color: RilyColors.statusInProgress,
                               emoji: '⚡')),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _StatCard(
-                              label: 'Terminées',
+                              label: 'Clôturés',
                               value: '$completed',
                               color: RilyColors.success,
                               emoji: '✅')),
@@ -151,8 +151,8 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                               children: [
                                 Text(
                                   available > 0
-                                      ? '$available mission${available > 1 ? 's' : ''} disponible${available > 1 ? 's' : ''}'
-                                      : 'Voir mes missions',
+                                      ? '$available dossier${available > 1 ? 's' : ''} disponible${available > 1 ? 's' : ''}'
+                                      : 'Mes dossiers en cours',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
@@ -163,7 +163,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   available > 0
-                                      ? 'Accepte une mission maintenant'
+                                      ? 'Prendre en charge un dossier'
                                       : 'Gérer ma progression',
                                   style: const TextStyle(
                                     fontSize: 13,
@@ -194,7 +194,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
                   // ── Missions en cours ──
                   if (inProgress > 0) ...[
-                    const SectionHeader('MES MISSIONS EN COURS'),
+                    const SectionHeader('DOSSIERS EN TRAITEMENT'),
                     const SizedBox(height: 14),
                     ...myMissions
                         .where((m) =>
@@ -217,10 +217,10 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
                   if (available == 0 && inProgress == 0)
                     const EmptyState(
-                      emoji: '🎯',
-                      title: 'Rien pour le moment',
+                      emoji: '📋',
+                      title: 'Aucun dossier pour le moment',
                       subtitle:
-                          'Reviens plus tard, de nouvelles missions arrivent régulièrement.',
+                          'De nouveaux dossiers clients arrivent régulièrement.',
                     ),
 
                   const SizedBox(height: 32),
