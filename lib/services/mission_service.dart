@@ -10,10 +10,76 @@ class MissionService {
     return _instance;
   }
 
-  MissionService._internal();
+  MissionService._internal() {
+    _missions.addAll(_seedMissions);
+  }
+
+  static final List<Mission> _seedMissions = [
+    Mission(
+      id: 'seed_1',
+      category: 'Administration personnelle',
+      address: '14 Rue Ibn Battouta, Casablanca',
+      timeSlot: 'Lundi 7 juil. — 09h00–12h00',
+      note: 'Renouvellement CNI. Pièces déjà scannées et envoyées.',
+      status: MissionStatus.inProgress,
+      clientId: 'client_1',
+      agentId: 'agent_1',
+      basePrice: 149,
+      isExpress: false,
+      totalPrice: 149,
+      proof: null,
+    ),
+    Mission(
+      id: 'seed_2',
+      category: 'Démarches mobilité',
+      address: '3 Bd Mohammed V, Rabat',
+      timeSlot: 'Mardi 8 juil. — 14h00–17h00',
+      note: 'Changement de titulaire carte grise suite à vente véhicule.',
+      status: MissionStatus.created,
+      clientId: 'client_2',
+      agentId: null,
+      basePrice: 199,
+      isExpress: true,
+      totalPrice: 249,
+      proof: null,
+    ),
+    Mission(
+      id: 'seed_3',
+      category: 'Formalités entreprise',
+      address: '27 Rue Abderrahmane Sahraoui, Casablanca',
+      timeSlot: 'Mercredi 9 juil. — 10h00–13h00',
+      note: 'Dépôt dossier modification siège social au Tribunal de Commerce.',
+      status: MissionStatus.completed,
+      clientId: 'client_1',
+      agentId: 'agent_1',
+      basePrice: 299,
+      isExpress: false,
+      totalPrice: 299,
+      proof: Proof(
+        imagePath: 'assets/mock_proof.jpg',
+        comment: 'Dossier déposé et récépissé remis au guichet.',
+      ),
+      ratingScore: 5,
+      ratingComment: 'Très professionnel, mission accomplie rapidement.',
+    ),
+    Mission(
+      id: 'seed_4',
+      category: "File d'attente",
+      address: 'Préfecture de Casablanca-Anfa, Rue Léon l\'Africain',
+      timeSlot: 'Jeudi 10 juil. — 08h00–11h00',
+      note: 'Prise de RDV et attente pour renouvellement titre de séjour.',
+      status: MissionStatus.accepted,
+      clientId: 'client_2',
+      agentId: 'agent_1',
+      basePrice: 99,
+      isExpress: true,
+      totalPrice: 149,
+      proof: null,
+    ),
+  ];
 
   final List<Mission> _missions = [];
-  int _counter = 1;
+  int _counter = 10;
 
   final AuthService _authService = AuthService();
 
