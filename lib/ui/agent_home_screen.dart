@@ -216,11 +216,23 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                   ],
 
                   if (available == 0 && inProgress == 0)
-                    const EmptyState(
-                      emoji: '📋',
-                      title: 'Aucun dossier pour le moment',
-                      subtitle:
-                          'De nouveaux dossiers clients arrivent régulièrement.',
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, v, child) => Opacity(
+                        opacity: v,
+                        child: Transform.translate(
+                          offset: Offset(0, 20 * (1 - v)),
+                          child: child,
+                        ),
+                      ),
+                      child: const EmptyState(
+                        emoji: '📋',
+                        title: 'Aucun dossier pour le moment',
+                        subtitle:
+                            'De nouveaux dossiers clients arrivent régulièrement.',
+                      ),
                     ),
 
                   const SizedBox(height: 32),

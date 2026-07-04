@@ -24,6 +24,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
   bool _isUpdating = false;
   bool _isCancelling = false;
   ProofUploadStatus _proofStatus = ProofUploadStatus.idle;
+  String? _pickedImageName;
 
   bool get _anyBusy =>
       _isUpdating || _isCancelling ||
@@ -72,19 +73,79 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
 
   // ─── Upload preuve (robust) ───────────────────────────────────────────────
 
+  Future<void> _pickImageSheet() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: RilyColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: RilyColors.surfaceBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Ajouter une photo',
+                style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700,
+                  color: RilyColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _PhotoSourceTile(
+                icon: Icons.camera_alt_rounded,
+                label: 'Prendre une photo',
+                onTap: () => Navigator.pop(ctx, 'camera_photo.jpg'),
+              ),
+              const SizedBox(height: 10),
+              _PhotoSourceTile(
+                icon: Icons.photo_library_rounded,
+                label: 'Choisir depuis la galerie',
+                onTap: () => Navigator.pop(ctx, 'galerie_photo.jpg'),
+              ),
+              const SizedBox(height: 10),
+              if (true) // always shown for cancel
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Annuler',
+                      style: TextStyle(color: RilyColors.textSecondary)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _pickedImageName = picked);
+    }
+  }
+
   Future<void> _uploadProof() async {
     final comment = _proofCtrl.text.trim();
+    if (_pickedImageName == null) {
+      showErrorSnack(context, 'Sélectionne d\'abord une photo.');
+      return;
+    }
     if (comment.isEmpty) {
-      showErrorSnack(context, 'Saisis un commentaire de preuve.');
+      showErrorSnack(context, 'Saisis un commentaire de rapport.');
       return;
     }
     if (_anyBusy) return;
 
-    // Réinitialiser l'état erreur précédent
     _uploader.reset();
 
     final result = await _uploader.upload(
-      localPath: 'assets/proof_placeholder.jpg', // TODO: image_picker
+      localPath: _pickedImageName!,
     );
 
     if (!mounted) return;
@@ -229,6 +290,10 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
                             isUploading: isUploading,
                             uploadFailed: uploadFailed,
                             uploadStatus: _proofStatus,
+                            pickedImageName: _pickedImageName,
+                            onPickImage: canAddProof && !_anyBusy
+                                ? _pickImageSheet
+                                : null,
                             onUpload: canAddProof ? _uploadProof : null,
                             hint: !canAddProof
                                 ? 'Disponible quand la mission est en cours'
@@ -610,6 +675,8 @@ class _ProofUploadCard extends StatelessWidget {
   final bool isUploading;
   final bool uploadFailed;
   final ProofUploadStatus uploadStatus;
+  final String? pickedImageName;
+  final VoidCallback? onPickImage;
   final VoidCallback? onUpload;
   final String? hint;
 
@@ -619,6 +686,8 @@ class _ProofUploadCard extends StatelessWidget {
     required this.isUploading,
     required this.uploadFailed,
     required this.uploadStatus,
+    this.pickedImageName,
+    this.onPickImage,
     this.onUpload,
     this.hint,
   });
@@ -642,18 +711,109 @@ class _ProofUploadCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hint si preuve pas encore dispo
           if (hint != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: AlertBanner(
-                  type: AlertType.info,
-                  message: hint!),
+              child: AlertBanner(type: AlertType.info, message: hint!),
             ),
+
+          // ── Photo picker area ──────────────────────────────────────
+          GestureDetector(
+            onTap: isEnabled && !isUploading ? onPickImage : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              height: 90,
+              decoration: BoxDecoration(
+                color: pickedImageName != null
+                    ? RilyColors.accent.withValues(alpha: 0.07)
+                    : RilyColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: pickedImageName != null
+                      ? RilyColors.accent.withValues(alpha: 0.4)
+                      : RilyColors.surfaceBorder,
+                  width: pickedImageName != null ? 1.5 : 1,
+                  strokeAlign: BorderSide.strokeAlignInside,
+                ),
+              ),
+              child: pickedImageName != null
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: RilyColors.accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.image_rounded,
+                              color: RilyColors.accent, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pickedImageName!,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: RilyColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              const Text(
+                                'Appuie pour changer',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: RilyColors.textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.check_circle_rounded,
+                            color: RilyColors.accent, size: 20),
+                        const SizedBox(width: 4),
+                      ],
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_photo_alternate_rounded,
+                          color: isEnabled
+                              ? RilyColors.textSecondary
+                              : RilyColors.textMuted,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          isEnabled
+                              ? 'Ajouter une photo *'
+                              : 'Photo — non disponible',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isEnabled
+                                ? RilyColors.textSecondary
+                                : RilyColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
 
           RilyTextField(
             controller: controller,
-            label: "Rapport d'exécution",
+            label: "Rapport d'exécution *",
             hint: 'Décrivez les démarches réalisées, les documents déposés...',
             maxLines: 3,
             enabled: isEnabled && !isUploading,
@@ -661,13 +821,11 @@ class _ProofUploadCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Barre de progression upload
           if (isUploading)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: LinearProgressIndicator(
-                backgroundColor:
-                    RilyColors.accent.withValues(alpha: 0.1),
+                backgroundColor: RilyColors.accent.withValues(alpha: 0.1),
                 color: RilyColors.accent,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -683,7 +841,8 @@ class _ProofUploadCard extends StatelessWidget {
                     : isEnabled
                         ? RilyColors.accent
                         : RilyColors.surfaceElevated,
-                foregroundColor: isEnabled ? Colors.white : RilyColors.textMuted,
+                foregroundColor:
+                    isEnabled ? Colors.white : RilyColors.textMuted,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -694,16 +853,17 @@ class _ProofUploadCard extends StatelessWidget {
                       width: 17,
                       height: 17,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white),
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : Icon(
-                      uploadFailed ? Icons.refresh_rounded : Icons.upload_rounded,
+                      uploadFailed
+                          ? Icons.refresh_rounded
+                          : Icons.upload_rounded,
                       size: 18),
               label: Text(
                 _buttonLabel,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -713,8 +873,7 @@ class _ProofUploadCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 'Upload échoué. Vérifie ta connexion et réessaie.',
-                style: TextStyle(
-                    fontSize: 12, color: RilyColors.error),
+                style: const TextStyle(fontSize: 12, color: RilyColors.error),
               ),
             ),
         ],
@@ -758,6 +917,47 @@ class _ProofDoneCard extends StatelessWidget {
                 color: RilyColors.textSecondary, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Photo source tile ───────────────────────────────────────────────────────
+
+class _PhotoSourceTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _PhotoSourceTile(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: RilyColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: RilyColors.surfaceBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: RilyColors.accent, size: 22),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: RilyColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

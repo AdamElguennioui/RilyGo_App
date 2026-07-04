@@ -29,12 +29,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     _isOffline = !_conn.isConnected;
   }
 
-  Future<void> _logout() async {
-    await _auth.logout();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
-  }
-
   void _openNewDossier({ServiceCategory? category}) async {
     await Navigator.pushNamed(context, '/createMission', arguments: category);
     if (mounted) setState(() {});
@@ -122,8 +116,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       IconButton(
                         icon: const Icon(Icons.person_outline_rounded,
                             color: RilyColors.textSecondary),
-                        onPressed: _logout,
-                        tooltip: 'Déconnexion',
+                        onPressed: () => Navigator.pushNamed(context, '/profile'),
+                        tooltip: 'Mon compte',
                       ),
                     ],
                     bottom: PreferredSize(

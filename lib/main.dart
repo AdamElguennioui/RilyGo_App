@@ -9,6 +9,7 @@ import 'ui/agent_mission_list.dart';
 import 'ui/agent_mission_detail.dart';
 import 'ui/client_home_screen.dart';
 import 'ui/agent_home_screen.dart';
+import 'ui/profile_screen.dart';
 import 'ui/theme/app_theme.dart';
 
 void main() async {
@@ -45,6 +46,7 @@ class RilyApp extends StatelessWidget {
         '/agentHome': (_) => const AgentHomeScreen(),
         '/createMission': (_) => const CreateMissionScreen(),
         '/agentMissions': (_) => const AgentMissionList(),
+        '/profile': (_) => const ProfileScreen(),
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {

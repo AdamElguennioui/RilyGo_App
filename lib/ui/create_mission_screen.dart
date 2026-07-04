@@ -25,23 +25,22 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   // Step 1
   final _descCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
-  final _dateCtrl = TextEditingController();
+  DateTime? _selectedDateTime;
 
   // Step 2
   bool _isPrioritaire = false;
   final _noteCtrl = TextEditingController();
 
   bool _isSubmitting = false;
+  bool _showErrors = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Pre-select category if passed from service grid
     final arg =
         ModalRoute.of(context)?.settings.arguments as ServiceCategory?;
     if (arg != null && _selectedCategory == null) {
       _selectedCategory = arg;
-      // Skip category step if already selected
       if (_step == 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) setState(() => _step = 1);
@@ -54,29 +53,73 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   void dispose() {
     _descCtrl.dispose();
     _locationCtrl.dispose();
-    _dateCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Date picker ───────────────────────────────────────────────────────────
+
+  Future<void> _pickDateTime() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+      helpText: 'Choisir la date',
+      confirmText: 'Suivant',
+      cancelText: 'Annuler',
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      helpText: 'Choisir le créneau',
+      confirmText: 'Valider',
+      cancelText: 'Retour',
+    );
+    if (!mounted) return;
+
+    setState(() {
+      if (time != null) {
+        _selectedDateTime = DateTime(
+            date.year, date.month, date.day, time.hour, time.minute);
+      } else {
+        _selectedDateTime =
+            DateTime(date.year, date.month, date.day, 9, 0);
+      }
+    });
+  }
+
+  String get _formattedSlot {
+    if (_selectedDateTime == null) return '';
+    final d = _selectedDateTime!;
+    const weekdays = [
+      'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'
+    ];
+    const months = [
+      'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+      'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'
+    ];
+    final wd = weekdays[d.weekday - 1];
+    final mo = months[d.month - 1];
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$wd ${d.day} $mo — ${h}h$m';
   }
 
   // ── Pricing ───────────────────────────────────────────────────────────────
 
   double get _basePrice {
     switch (_selectedCategory?.id) {
-      case 'personal':
-        return 149;
-      case 'mobility':
-        return 199;
-      case 'business':
-        return 299;
-      case 'immigration':
-        return 249;
-      case 'queue':
-        return 99;
-      case 'notary':
-        return 199;
-      default:
-        return 149;
+      case 'personal':   return 149;
+      case 'mobility':   return 199;
+      case 'business':   return 299;
+      case 'immigration':return 249;
+      case 'queue':      return 99;
+      case 'notary':     return 199;
+      default:           return 149;
     }
   }
 
@@ -87,35 +130,30 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   void _next() {
     if (_step == 0) {
       if (_selectedCategory == null) {
+        setState(() => _showErrors = true);
         showErrorSnack(context, 'Veuillez sélectionner un type de démarche.');
         return;
       }
-      setState(() => _step = 1);
+      setState(() { _step = 1; _showErrors = false; });
       return;
     }
     if (_step == 1) {
-      if (_descCtrl.text.trim().isEmpty) {
-        showErrorSnack(context, 'Veuillez décrire votre démarche.');
+      final hasDesc = _descCtrl.text.trim().isNotEmpty;
+      final hasLoc  = _locationCtrl.text.trim().isNotEmpty;
+      final hasDate = _selectedDateTime != null;
+      if (!hasDesc || !hasLoc || !hasDate) {
+        setState(() => _showErrors = true);
         return;
       }
-      if (_locationCtrl.text.trim().isEmpty) {
-        showErrorSnack(context, 'Veuillez préciser le lieu de la démarche.');
-        return;
-      }
-      if (_dateCtrl.text.trim().isEmpty) {
-        showErrorSnack(context, 'Veuillez indiquer la date souhaitée.');
-        return;
-      }
-      setState(() => _step = 2);
+      setState(() { _step = 2; _showErrors = false; });
       return;
     }
-    // step 2 → submit
     _submit();
   }
 
   void _back() {
     if (_step > 0) {
-      setState(() => _step--);
+      setState(() { _step--; _showErrors = false; });
     } else {
       Navigator.pop(context);
     }
@@ -135,12 +173,11 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
       final mission = await _ms.createMission(
         category: _selectedCategory!.title,
         address: _locationCtrl.text.trim(),
-        timeSlot: _dateCtrl.text.trim(),
+        timeSlot: _formattedSlot,
         note: combined,
         isExpress: _isPrioritaire,
       );
       if (!mounted) return;
-      showSuccessSnack(context, 'Dossier soumis avec succès.');
       Navigator.pushReplacementNamed(
           context, '/missionStatus',
           arguments: mission);
@@ -195,14 +232,10 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
 
   Widget _buildStep() {
     switch (_step) {
-      case 0:
-        return _buildStepCategory();
-      case 1:
-        return _buildStepDetails();
-      case 2:
-        return _buildStepOptions();
-      default:
-        return const SizedBox.shrink();
+      case 0:  return _buildStepCategory();
+      case 1:  return _buildStepDetails();
+      case 2:  return _buildStepOptions();
+      default: return const SizedBox.shrink();
     }
   }
 
@@ -307,6 +340,10 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   // ── Step 1 : details ──────────────────────────────────────────────────────
 
   Widget _buildStepDetails() {
+    final descEmpty = _showErrors && _descCtrl.text.trim().isEmpty;
+    final locEmpty  = _showErrors && _locationCtrl.text.trim().isEmpty;
+    final dateEmpty = _showErrors && _selectedDateTime == null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -328,25 +365,86 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
               fontSize: 14, color: RilyColors.textSecondary, height: 1.5),
         ),
         const SizedBox(height: 24),
+
+        // Description
         RilyTextField(
           controller: _descCtrl,
-          label: 'Description de la démarche',
-          hint:
-              'Ex : Renouvellement de titre de séjour suite à un changement d\'adresse...',
+          label: 'Description de la démarche *',
+          hint: 'Ex : Renouvellement de titre de séjour suite à un changement d\'adresse...',
           maxLines: 4,
+          onChanged: (_) { if (_showErrors) setState(() {}); },
         ),
+        if (descEmpty) const _FieldError('Veuillez décrire votre démarche.'),
         const SizedBox(height: 14),
+
+        // Lieu
         RilyTextField(
           controller: _locationCtrl,
-          label: 'Lieu de la démarche',
+          label: 'Lieu de la démarche *',
           hint: 'Ex : Préfecture de Casablanca, Consulat de France...',
+          onChanged: (_) { if (_showErrors) setState(() {}); },
         ),
+        if (locEmpty) const _FieldError('Veuillez préciser le lieu.'),
         const SizedBox(height: 14),
-        RilyTextField(
-          controller: _dateCtrl,
-          label: 'Date / créneau souhaité',
-          hint: 'Ex : Cette semaine, avant le 20 mars, de préférence matin...',
+
+        // Date picker
+        GestureDetector(
+          onTap: _pickDateTime,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: RilyColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: dateEmpty
+                    ? RilyColors.error
+                    : _selectedDateTime != null
+                        ? RilyColors.accent.withValues(alpha: 0.5)
+                        : RilyColors.surfaceBorder,
+                width: _selectedDateTime != null ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: _selectedDateTime != null
+                      ? RilyColors.accent
+                      : RilyColors.textMuted,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _selectedDateTime != null
+                      ? Text(
+                          _formattedSlot,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: RilyColors.textPrimary,
+                          ),
+                        )
+                      : const Text(
+                          'Date / créneau souhaité *',
+                          style: TextStyle(
+                              fontSize: 15, color: RilyColors.textMuted),
+                        ),
+                ),
+                if (_selectedDateTime != null)
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedDateTime = null),
+                    child: const Icon(Icons.close_rounded,
+                        size: 16, color: RilyColors.textMuted),
+                  )
+                else
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 18, color: RilyColors.textMuted),
+              ],
+            ),
+          ),
         ),
+        if (dateEmpty) const _FieldError('Veuillez choisir une date.'),
+
         const SizedBox(height: 20),
         const AlertBanner(
           type: AlertType.info,
@@ -376,7 +474,6 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ),
         const SizedBox(height: 24),
 
-        // Urgency
         const SectionHeader("NIVEAU D'URGENCE"),
         const SizedBox(height: 12),
         _UrgencyOption(
@@ -398,20 +495,17 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
 
         const SizedBox(height: 24),
 
-        // Notes
         const SectionHeader('INSTRUCTIONS PARTICULIÈRES'),
         const SizedBox(height: 12),
         RilyTextField(
           controller: _noteCtrl,
           label: 'Notes complémentaires (optionnel)',
-          hint:
-              'Documents spécifiques à apporter, accès, contact sur place...',
+          hint: 'Documents spécifiques à apporter, accès, contact sur place...',
           maxLines: 3,
         ),
 
         const SizedBox(height: 24),
 
-        // Price recap
         const SectionHeader('RÉCAPITULATIF TARIFAIRE'),
         const SizedBox(height: 12),
         RilyCard(
@@ -446,7 +540,6 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Security note
         const AlertBanner(
           type: AlertType.success,
           message:
@@ -490,6 +583,34 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   : Icons.arrow_forward_rounded,
               onPressed: _next,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Inline field error
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FieldError extends StatelessWidget {
+  final String message;
+  const _FieldError(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded,
+              size: 13, color: RilyColors.error),
+          const SizedBox(width: 5),
+          Text(
+            message,
+            style: const TextStyle(
+                fontSize: 12, color: RilyColors.error),
           ),
         ],
       ),
