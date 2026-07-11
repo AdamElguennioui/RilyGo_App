@@ -507,6 +507,201 @@ void showErrorSnack(BuildContext context, Object error) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Profile shared widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Avatar + phone/name + role badge — shared between client and agent profiles.
+class ProfileHeader extends StatelessWidget {
+  final String phone;
+  final String badgeLabel;
+  final Color badgeColor;
+
+  const ProfileHeader({
+    super.key,
+    required this.phone,
+    required this.badgeLabel,
+    this.badgeColor = RilyColors.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: badgeColor.withValues(alpha: 0.3), width: 2),
+          ),
+          child: Center(
+            child: Icon(Icons.person_rounded, color: badgeColor, size: 36),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          phone,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: RilyColors.textPrimary,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.25)),
+          ),
+          child: Text(
+            badgeLabel,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: badgeColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Compact stat tile for profile screens.
+class ProfileStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const ProfileStatTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RilyCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: RilyColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Labeled info row inside a profile card.
+class ProfileInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? iconColor;
+  final VoidCallback? onTap;
+
+  const ProfileInfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.iconColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Icon(icon, size: 18, color: iconColor ?? RilyColors.accent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 12, color: RilyColors.textMuted)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: RilyColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  )),
+            ],
+          ),
+        ),
+        if (onTap != null)
+          const Icon(Icons.chevron_right_rounded,
+              size: 18, color: RilyColors.textMuted),
+      ],
+    );
+
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: row,
+    );
+  }
+}
+
+/// Danger-styled logout button shared by both profiles.
+class ProfileLogoutButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const ProfileLogoutButton({super.key, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: RilyColors.error,
+          side: BorderSide(color: RilyColors.error.withValues(alpha: 0.4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: const Icon(Icons.logout_rounded, size: 18),
+        label: const Text(
+          'Se déconnecter',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  EmptyState — état vide générique
 // ─────────────────────────────────────────────────────────────────────────────
 

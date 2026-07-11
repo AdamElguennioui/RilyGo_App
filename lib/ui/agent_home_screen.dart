@@ -16,12 +16,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
   final AuthService _auth = AuthService();
   final MissionService _ms = MissionService();
 
-  Future<void> _logout() async {
-    await _auth.logout();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
@@ -76,10 +70,11 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.logout_rounded,
+                  icon: const Icon(Icons.person_outline_rounded,
                       color: RilyColors.textSecondary),
-                  onPressed: _logout,
-                  tooltip: 'Déconnexion',
+                  onPressed: () => Navigator.pushNamed(context, '/agentProfile')
+                      .then((_) => mounted ? setState(() {}) : null),
+                  tooltip: 'Mon espace',
                 ),
               ],
               bottom: PreferredSize(
