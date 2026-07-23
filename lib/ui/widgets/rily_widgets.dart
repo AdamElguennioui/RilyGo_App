@@ -202,8 +202,10 @@ class RilyTextField extends StatelessWidget {
   final String? hint;
   final int maxLines;
   final bool enabled;
+  final bool obscureText;
   final TextInputType? keyboardType;
   final void Function(String)? onChanged;
+  final Widget? suffix;
 
   const RilyTextField({
     super.key,
@@ -212,8 +214,10 @@ class RilyTextField extends StatelessWidget {
     this.hint,
     this.maxLines = 1,
     this.enabled = true,
+    this.obscureText = false,
     this.keyboardType,
     this.onChanged,
+    this.suffix,
   });
 
   @override
@@ -222,12 +226,14 @@ class RilyTextField extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       enabled: enabled,
+      obscureText: obscureText,
       keyboardType: keyboardType,
       onChanged: onChanged,
       style: const TextStyle(color: RilyColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        suffixIcon: suffix,
       ),
     );
   }

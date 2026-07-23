@@ -17,6 +17,7 @@ class LocalStorageService {
   static const _kUser      = 'rily_user';
   static const _kMissions  = 'rily_missions';
   static const _kSettings  = 'rily_settings';
+  static const _kToken     = 'rily_token';
 
   /// Must be called once before any read/write — typically in main().
   Future<void> init() async {
@@ -45,6 +46,18 @@ class LocalStorageService {
     } catch (_) {
       return null;
     }
+  }
+
+  // ── JWT Token ────────────────────────────────────────────────────────────
+
+  Future<void> saveToken(String token) async {
+    if (!_ready) return;
+    await _prefs!.setString(_kToken, token);
+  }
+
+  String? loadToken() {
+    if (!_ready) return null;
+    return _prefs!.getString(_kToken);
   }
 
   // ── Missions ─────────────────────────────────────────────────────────────
@@ -91,10 +104,11 @@ class LocalStorageService {
 
   // ── Clear ─────────────────────────────────────────────────────────────────
 
-  /// Removes only the authenticated session (user token).
+  /// Removes only the authenticated session (user + token).
   Future<void> clearSession() async {
     if (!_ready) return;
     await _prefs!.remove(_kUser);
+    await _prefs!.remove(_kToken);
   }
 
   /// Wipes all stored data (logout + reset).

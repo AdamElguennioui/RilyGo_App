@@ -100,22 +100,46 @@ class Mission {
 
   factory Mission.fromJson(Map<String, dynamic> json) {
     return Mission(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       category: json['category'] as String,
       address: json['address'] as String,
       timeSlot: json['timeSlot'] as String,
-      note: json['note'] as String,
+      note: json['note'] as String? ?? '',
       status: _statusFromString(json['status'] as String),
-      clientId: json['clientId'] as String,
-      agentId: json['agentId'] as String?,
+      clientId: json['clientId'].toString(),
+      agentId: json['agentId']?.toString(),
       basePrice: (json['basePrice'] as num).toDouble(),
-      isExpress: json['isExpress'] as bool,
+      isExpress: json['isExpress'] as bool? ?? false,
       totalPrice: (json['totalPrice'] as num).toDouble(),
       proof: json['proof'] != null
           ? Proof.fromJson(json['proof'] as Map<String, dynamic>)
           : null,
       ratingScore: json['ratingScore'] as int?,
       ratingComment: json['ratingComment'] as String?,
+    );
+  }
+
+  /// Maps a backend Appointment JSON to our Mission model.
+  factory Mission.fromAppointmentJson(Map<String, dynamic> json) {
+    final service = json['service'] as Map<String, dynamic>?;
+    final employee = json['employee'] as Map<String, dynamic>?;
+    final salon = json['salon'] as Map<String, dynamic>?;
+    final price = (service?['price'] as num?)?.toDouble() ?? 0.0;
+
+    return Mission(
+      id: json['id'].toString(),
+      category: service?['name'] as String? ?? 'Service beauté',
+      address: salon?['address'] as String? ?? '',
+      timeSlot: json['date'] as String? ?? '',
+      note: json['note'] as String? ?? '',
+      status: _statusFromBackend(json['status'] as String? ?? 'PENDING'),
+      clientId: json['userId'].toString(),
+      agentId: employee?['id']?.toString(),
+      basePrice: price,
+      isExpress: false,
+      totalPrice: price,
+      ratingScore: null,
+      ratingComment: null,
     );
   }
 
@@ -187,6 +211,36 @@ class Mission {
       case 'created':
       default:
         return MissionStatus.created;
+    }
+  }
+
+  static MissionStatus _statusFromBackend(String value) {
+    switch (value.toUpperCase()) {
+      case 'CONFIRMED':
+        return MissionStatus.accepted;
+      case 'COMPLETED':
+        return MissionStatus.completed;
+      case 'CANCELLED':
+      case 'NO_SHOW':
+        return MissionStatus.cancelled;
+      case 'PENDING':
+      default:
+        return MissionStatus.created;
+    }
+  }
+
+  String toBackendStatus() {
+    switch (status) {
+      case MissionStatus.accepted:
+      case MissionStatus.onTheWay:
+      case MissionStatus.inProgress:
+        return 'CONFIRMED';
+      case MissionStatus.completed:
+        return 'COMPLETED';
+      case MissionStatus.cancelled:
+        return 'CANCELLED';
+      case MissionStatus.created:
+        return 'PENDING';
     }
   }
 }
