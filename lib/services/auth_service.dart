@@ -1,5 +1,4 @@
 import '../data/local/local_storage_service.dart';
-import '../data/remote/api_client.dart';
 import '../models/user.dart';
 
 class AuthService {
@@ -11,66 +10,49 @@ class AuthService {
   }
 
   User? _currentUser;
+  String? _lastSentOtp;
+  String? _lastPhoneNumber;
 
   User? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
-  Future<User> signIn({
-    required String email,
-    required String password,
-  }) async {
-    final data = await ApiClient().post('/auth/sign-in', {
-      'email': email,
-      'password': password,
-    });
-
-    final token = data['access_token'] as String?
-        ?? data['token'] as String?
-        ?? data['accessToken'] as String?;
-    if (token != null) {
-      await LocalStorageService().saveToken(token);
-    }
-
-    final userJson = data['user'] as Map<String, dynamic>? ?? data;
-    final user = User.fromJson(userJson);
-    _currentUser = user;
-    await LocalStorageService().saveUser(user);
-    return user;
+  Future<void> sendOtp(String phone) async {
+    await Future.delayed(const Duration(seconds: 1));
+    _lastPhoneNumber = phone;
+    _lastSentOtp = '1234';
   }
 
-  Future<User> signUp({
-    required String email,
-    required String password,
-    String? firstname,
-    String? lastname,
-    String? phone,
-    UserRole role = UserRole.client,
+  Future<User> verifyOtp({
+    required String phone,
+    required String otp,
   }) async {
-    final data = await ApiClient().post('/auth/sign-up', {
-      'email': email,
-      'password': password,
-      'firstname': ?firstname,
-      'lastname': ?lastname,
-      'phone': ?phone,
-      'role': role == UserRole.agent ? 'SALON' : 'CLIENT',
-    });
+    await Future.delayed(const Duration(seconds: 1));
 
-    final token = data['access_token'] as String?
-        ?? data['token'] as String?
-        ?? data['accessToken'] as String?;
-    if (token != null) {
-      await LocalStorageService().saveToken(token);
+    if (_lastPhoneNumber != phone) {
+      throw Exception('Aucun OTP envoyé pour ce numéro.');
     }
+    if (_lastSentOtp == null) throw Exception('OTP introuvable.');
+    if (otp != _lastSentOtp) throw Exception('Code OTP incorrect.');
 
-    final userJson = data['user'] as Map<String, dynamic>? ?? data;
-    final user = User.fromJson(userJson);
+    final user = _buildFakeUser(phone);
     _currentUser = user;
     await LocalStorageService().saveUser(user);
     return user;
   }
 
   Future<void> logout() async {
+    await Future.delayed(const Duration(milliseconds: 300));
     _currentUser = null;
     await LocalStorageService().clearSession();
+  }
+
+  User _buildFakeUser(String phone) {
+    final cleaned = phone.trim();
+    final role = cleaned.endsWith('1') ? UserRole.agent : UserRole.client;
+    return User(
+      id: role == UserRole.agent ? 'agent_1' : 'client_1',
+      phone: cleaned,
+      role: role,
+    );
   }
 }

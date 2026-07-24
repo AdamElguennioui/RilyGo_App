@@ -14,15 +14,15 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailCtrl    = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _auth = AuthService();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  final AuthService _authService = AuthService();
 
+  bool _otpSent = false;
   bool _isLoading = false;
-  bool _obscure   = true;
 
   late AnimationController _fadeCtrl;
-  late Animation<double>   _fadeAnim;
+  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
@@ -37,24 +37,44 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
     _fadeCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _signIn() async {
-    final email    = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      _snack('Veuillez remplir tous les champs.', isError: true);
+  Future<void> _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      _showSnack('Veuillez saisir votre numéro de téléphone.', isError: true);
       return;
     }
-
     setState(() => _isLoading = true);
     try {
-      final user = await _auth.signIn(email: email, password: password);
+      await _authService.sendOtp(phone);
+      if (!mounted) return;
+      setState(() => _otpSent = true);
+      _showSnack('Code envoyé — utilisez 1234 pour tester.');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Erreur : $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final otp = _otpController.text.trim();
+    if (otp.isEmpty) {
+      _showSnack('Veuillez saisir le code reçu.', isError: true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.verifyOtp(
+        phone: _phoneController.text.trim(),
+        otp: otp,
+      );
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
@@ -62,26 +82,31 @@ class _LoginScreenState extends State<LoginScreen>
       );
     } catch (e) {
       if (!mounted) return;
-      _snack(e.toString().replaceFirst('Exception: ', ''), isError: true);
+      _showSnack('Code invalide. Veuillez réessayer.', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _snack(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? RilyColors.error : RilyColors.surfaceElevated,
-      behavior: SnackBarBehavior.floating,
-    ));
+  void _showSnack(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor:
+            isError ? RilyColors.error : RilyColors.surfaceElevated,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
       body: FadeTransition(
@@ -94,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen>
               children: [
                 const SizedBox(height: 48),
 
-                // ── Brand ────────────────────────────────────────────────────
+                // ── Brand mark ──────────────────────────────────────────────
                 Row(children: [
                   Container(
                     width: 44,
@@ -124,102 +149,126 @@ class _LoginScreenState extends State<LoginScreen>
 
                 const SizedBox(height: 40),
 
-                // ── Value prop ───────────────────────────────────────────────
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: RilyColors.accentDim,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: RilyColors.accent.withValues(alpha: 0.25)),
-                  ),
-                  child: const Text('Votre concierge administratif',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: RilyColors.accent,
-                          fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Déléguez vos\ndémarches\nadministratives.',
-                  style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: RilyColors.textPrimary,
-                      letterSpacing: -1.0,
-                      height: 1.1),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Des experts certifiés prennent en charge\nvos formalités de A à Z.',
-                  style: TextStyle(
-                      fontSize: 15,
-                      color: RilyColors.textSecondary,
-                      height: 1.6),
-                ),
-                const SizedBox(height: 32),
-
-                // ── Trust pills ──────────────────────────────────────────────
-                const Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _TrustPill(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Experts vérifiés'),
-                    _TrustPill(
-                        icon: Icons.lock_outline_rounded,
-                        label: 'Données sécurisées'),
-                    _TrustPill(
-                        icon: Icons.track_changes_rounded,
-                        label: 'Suivi en temps réel'),
-                  ],
-                ),
-                const SizedBox(height: 40),
-
-                // ── Email ────────────────────────────────────────────────────
-                RilyTextField(
-                  controller: _emailCtrl,
-                  label: 'Adresse email',
-                  hint: 'exemple@email.com',
-                  keyboardType: TextInputType.emailAddress,
-                  enabled: !_isLoading,
-                ),
-                const SizedBox(height: 14),
-
-                // ── Password ─────────────────────────────────────────────────
-                RilyTextField(
-                  controller: _passwordCtrl,
-                  label: 'Mot de passe',
-                  hint: '••••••••',
-                  obscureText: _obscure,
-                  enabled: !_isLoading,
-                  suffix: IconButton(
-                    icon: Icon(
-                      _obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: RilyColors.textMuted,
-                      size: 20,
+                if (!_otpSent) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: RilyColors.accentDim,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: RilyColors.accent.withValues(alpha: 0.25)),
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+                    child: const Text('Votre concierge administratif',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: RilyColors.accent,
+                            fontWeight: FontWeight.w600)),
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Déléguez vos\ndémarches\nadministratives.',
+                    style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: RilyColors.textPrimary,
+                        letterSpacing: -1.0,
+                        height: 1.1),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Des experts certifiés prennent en charge\nvos formalités de A à Z.',
+                    style: TextStyle(
+                        fontSize: 15,
+                        color: RilyColors.textSecondary,
+                        height: 1.6),
+                  ),
+                  const SizedBox(height: 32),
+                  const Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _TrustPill(
+                          icon: Icons.verified_user_outlined,
+                          label: 'Experts vérifiés'),
+                      _TrustPill(
+                          icon: Icons.lock_outline_rounded,
+                          label: 'Données sécurisées'),
+                      _TrustPill(
+                          icon: Icons.track_changes_rounded,
+                          label: 'Suivi en temps réel'),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                ],
+
+                if (_otpSent) ...[
+                  const Text('Code de vérification',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: RilyColors.textPrimary,
+                          letterSpacing: -0.5)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Un code à 4 chiffres a été envoyé\nau ${_phoneController.text}',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        color: RilyColors.textSecondary,
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+
+                RilyTextField(
+                  controller: _phoneController,
+                  label: 'Numéro de téléphone',
+                  hint: '06 XX XX XX XX',
+                  keyboardType: TextInputType.phone,
+                  enabled: !_otpSent && !_isLoading,
                 ),
+
+                if (_otpSent) ...[
+                  const SizedBox(height: 14),
+                  RilyTextField(
+                    controller: _otpController,
+                    label: 'Code à 4 chiffres',
+                    hint: '1234',
+                    keyboardType: TextInputType.number,
+                    enabled: !_isLoading,
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
-                // ── CTA ──────────────────────────────────────────────────────
                 RilyButton(
-                  label: 'Connexion',
-                  loadingLabel: 'Connexion...',
+                  label: _otpSent ? 'Accéder à mon espace' : 'Continuer',
+                  loadingLabel:
+                      _otpSent ? 'Vérification...' : 'Envoi du code...',
                   isLoading: _isLoading,
-                  icon: Icons.arrow_forward_rounded,
-                  onPressed: _signIn,
+                  icon: _otpSent
+                      ? Icons.arrow_forward_rounded
+                      : Icons.phone_outlined,
+                  onPressed: _otpSent ? _verifyOtp : _sendOtp,
                 ),
 
-                const SizedBox(height: 32),
+                if (_otpSent) ...[
+                  const SizedBox(height: 16),
+                  Center(
+                    child: TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => setState(() {
+                                _otpSent = false;
+                                _otpController.clear();
+                              }),
+                      child: const Text('Changer de numéro',
+                          style: TextStyle(color: RilyColors.textSecondary)),
+                    ),
+                  ),
+                ],
 
-                // ── Footer ───────────────────────────────────────────────────
+                const SizedBox(height: 32),
                 Center(
                   child: Text(
                     'En continuant, vous acceptez nos CGU\net notre politique de confidentialité.',

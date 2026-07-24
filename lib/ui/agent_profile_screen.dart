@@ -49,7 +49,7 @@ class AgentProfileScreen extends StatelessWidget {
           // ── Header ────────────────────────────────────────────────────────
           Center(
             child: ProfileHeader(
-              phone: user.phone ?? user.email ?? '',
+              phone: user.phone,
               badgeLabel: 'Expert RilyGo',
               badgeColor: const Color(0xFF60A5FA),
             ),
@@ -127,7 +127,7 @@ class AgentProfileScreen extends StatelessWidget {
                 ProfileInfoRow(
                   icon: Icons.phone_rounded,
                   label: 'Numéro de téléphone',
-                  value: user.phone ?? '—',
+                  value: user.phone,
                 ),
                 const Divider(height: 20),
                 const ProfileInfoRow(

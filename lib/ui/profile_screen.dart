@@ -38,7 +38,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Center(
             child: ProfileHeader(
-              phone: user.phone ?? user.email ?? '',
+              phone: user.phone,
               badgeLabel: 'Client',
             ),
           ),
@@ -76,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
                 ProfileInfoRow(
                   icon: Icons.phone_rounded,
                   label: 'Numéro de téléphone',
-                  value: user.phone ?? '—',
+                  value: user.phone,
                 ),
                 const Divider(height: 20),
                 const ProfileInfoRow(
