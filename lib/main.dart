@@ -19,21 +19,39 @@ import 'ui/theme/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: RilyColors.bg,
-    ),
-  );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: RilyColors.bg,
+      ),
+    );
 
-  // Initialise local storage before any service reads from it.
-  await LocalStorageService().init();
-  await ConnectivityService().init();
+    // Initialise local storage before any service reads from it.
+    await LocalStorageService().init();
+    await ConnectivityService().init();
 
-  runApp(const RilyApp());
+    runApp(const RilyApp());
+  } catch (e) {
+    runApp(MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Une erreur est survenue au démarrage. Veuillez réessayer plus tard.\n($e)',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
 }
 
 class RilyApp extends StatelessWidget {
