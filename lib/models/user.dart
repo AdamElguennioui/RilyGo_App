@@ -31,7 +31,7 @@ class User {
   }
 
   static UserRole _roleFromString(String value) {
-    switch (value) {
+    switch (value.toLowerCase()) {
       case 'agent':
         return UserRole.agent;
       case 'client':

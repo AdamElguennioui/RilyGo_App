@@ -7,7 +7,8 @@ class ApiClient {
   factory ApiClient() => _instance;
   ApiClient._internal();
 
-  static const String baseUrl = 'http://localhost:3000';
+  static const String baseUrl =
+      'http://bk29ivj2gwbb5vh9le4r704m.87.106.3.145.sslip.io';
 
   Map<String, String> get _headers {
     final token = LocalStorageService().loadToken();
