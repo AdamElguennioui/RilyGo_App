@@ -50,7 +50,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'RilyGo — Expert',
+                    'RileyQueue — Expert',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,

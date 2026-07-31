@@ -50,8 +50,8 @@ class AgentProfileScreen extends StatelessWidget {
           Center(
             child: ProfileHeader(
               phone: user.phone,
-              badgeLabel: 'Expert RilyGo',
-              badgeColor: const Color(0xFF60A5FA),
+              badgeLabel: 'Expert RileyQueue',
+              badgeColor: RilyColors.gold,
             ),
           ),
 

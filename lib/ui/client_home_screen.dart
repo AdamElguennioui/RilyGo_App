@@ -102,7 +102,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         ),
                         const SizedBox(width: 10),
                         const Text(
-                          'RilyGo',
+                          'RileyQueue',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,

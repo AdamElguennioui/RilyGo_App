@@ -60,7 +60,7 @@ class RilyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RilyGo',
+      title: 'RileyQueue',
       debugShowCheckedModeBanner: false,
       theme: RilyTheme.theme,
       initialRoute: '/login',
